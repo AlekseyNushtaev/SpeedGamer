@@ -56,6 +56,19 @@ class Payments(Base):
     payload = Column(String, nullable=True)
 
 
+class PaymentsCards(Base):
+    __tablename__ = 'payments_cards'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, nullable=False)
+    amount = Column(Integer, nullable=False)
+    time_created = Column(DateTime, default=datetime.now)
+    is_gift = Column(Boolean, default=False)
+    status = Column(String, nullable=True)
+    transaction_id = Column(String, nullable=True)
+    payload = Column(String, nullable=True)
+
+
 class PaymentsStars(Base):
     __tablename__ = 'payments_stars'
 
