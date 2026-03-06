@@ -349,7 +349,6 @@ async def sync_panel(message: Message):
             expire_str = user_data.get('expireAt')
             if expire_str:
                 try:
-                    # Убираем 'Z' и добавляем временную зону UTC
                     expire_dt = datetime.fromisoformat(expire_str.replace('Z', '+00:00'))
                 except Exception as e:
                     logger.error(f"Ошибка парсинга expireAt для {user_id}: {e}")
@@ -359,10 +358,7 @@ async def sync_panel(message: Message):
                 updated += 1
                 logger.info(f"Обновлена дата для {user_id} до {expire_dt}")
         else:
-            # Пользователя нет в панели – добавляем его с нулевым сроком
-            # Используем стандартный addClient с day=0 (подписка сразу истекает)
             user_id_str = str(user_id)
-            # Пытаемся добавить как обычного (без _white)
             result = await x3.addClient(5, user_id_str, user_id)
             if result:
                 added_to_panel += 1
@@ -381,7 +377,7 @@ async def sync_panel(message: Message):
         f"📊 Всего в панели: {len(users_panel)}\n"
         f"📋 Ожидало синхронизации: {len(users_for_sync)}\n"
         f"🔄 Обновлено дат в БД: {updated}\n"
-        f"➕ Добавлено в панель (day=0): {added_to_panel}\n"
+        f"➕ Добавлено в панель (day=5): {added_to_panel}\n"
         f"❌ Не удалось добавить (ошибки): {not_found}"
     )
     await message.answer(report)

@@ -45,6 +45,7 @@ async def send_push_cron(debug: bool = False):
                     if 30 <= minutes_diff <= 60:
                         message_text = lexicon['push_not_subscribed_30m']
                     elif 180 <= minutes_diff <= 210:
+                        video_flag = True
                         message_text = lexicon['push_not_subscribed_3h']
                     elif 1410 <= minutes_diff <= 1440:
                         message_text = lexicon['push_not_subscribed_24h']
@@ -55,7 +56,7 @@ async def send_push_cron(debug: bool = False):
                             if video_flag:
                                 await bot.send_video(
                                     chat_id=user_id,
-                                    video='BAACAgIAAxkBAAEBk_5pmqIm8a5-5ioQ3GziIJ4dBH9PugAC_ZgAAtS92EjbvWnuAla0dDoE',
+                                    video='BAACAgIAAxkBAAECpqNpqrDnzrb_G1rcEtZli39lGgVpMAACa5sAAl9MWUmxYN_rJYzPVToE',
                                     caption=message_text,
                                     reply_markup=keyboard_broadcast
                                 )
@@ -76,6 +77,7 @@ async def send_push_cron(debug: bool = False):
                     if 30 <= minutes_diff <= 60:
                         message_text = lexicon['push_not_connected_30m']
                     elif 180 <= minutes_diff <= 210:
+                        video_flag = True
                         message_text = lexicon['push_not_connected_3h']
                     elif 1410 <= minutes_diff <= 1440:
                         message_text = lexicon['push_not_connected_24h']
@@ -86,7 +88,7 @@ async def send_push_cron(debug: bool = False):
                             if video_flag:
                                 await bot.send_video(
                                     chat_id=user_id,
-                                    video='BAACAgIAAxkBAAEBk_5pmqIm8a5-5ioQ3GziIJ4dBH9PugAC_ZgAAtS92EjbvWnuAla0dDoE',
+                                    video='BAACAgIAAxkBAAECpqNpqrDnzrb_G1rcEtZli39lGgVpMAACa5sAAl9MWUmxYN_rJYzPVToE',
                                     caption=message_text,
                                     reply_markup=keyboard_broadcast
                                 )

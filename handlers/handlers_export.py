@@ -27,6 +27,7 @@ async def export_database_to_excel(message: Message):
         users_list = await sql.get_all_users()
         payments_list = await sql.get_all_payments()
         payments_cards_list = await sql.get_all_payments_cards()
+        payments_platega_crypto_list = await sql.get_all_payments_platega_crypto()
         payments_stars_list = await sql.get_all_payments_stars()
         payments_cryptobot_list = await sql.get_all_payments_cryptobot()
         gifts_list = await sql.get_all_gifts()
@@ -171,6 +172,37 @@ async def export_database_to_excel(message: Message):
                     max_len = max(max_len, len(str(cell.value)))
             ws_payments_stars.column_dimensions[col_letter].width = min(max_len + 2, 50)
 
+
+
+        # --- Лист PAYMENTS_PLATEGA_CRYPTO ---
+        ws_platega_crypto = wb.create_sheet(title="payments_platega_crypto")
+        platega_crypto_columns = ['ID', 'User ID', 'Amount', 'Time Created', 'Is Gift', 'Status', 'Transaction_Id',
+                                  'Payload']
+        for col_num, title in enumerate(platega_crypto_columns, 1):
+            cell = ws_platega_crypto.cell(row=1, column=col_num, value=title)
+            cell.alignment = header_alignment
+            cell.border = thin_border
+
+        for row_num, pay in enumerate(payments_platega_crypto_list, 2):
+            row_data = [
+                pay.id, pay.user_id, pay.amount, pay.time_created,
+                pay.is_gift, pay.status, pay.transaction_id, pay.payload
+            ]
+            for col_num, value in enumerate(row_data, 1):
+                if col_num == 4 and value and isinstance(value, datetime):
+                    value = value.strftime('%Y-%m-%d %H:%M:%S')
+                cell = ws_platega_crypto.cell(row=row_num, column=col_num, value=value)
+                cell.border = thin_border
+
+        for col in ws_platega_crypto.columns:
+            max_len = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            ws_platega_crypto.column_dimensions[col_letter].width = min(max_len + 2, 50)
+
+
         # --- Лист PAYMENTS_CRYPTOBOT ---
         ws_payments_cryptobot = wb.create_sheet(title="payments_cryptobot")
         crypto_columns = [
@@ -278,8 +310,8 @@ async def export_database_to_excel(message: Message):
             ws_white_counter.column_dimensions[col_letter].width = min(max_len + 2, 50)
 
         # Заморозка заголовков
-        for ws in [ws_users, ws_payments, ws_payments_cards, ws_payments_stars, ws_payments_cryptobot,
-                   ws_gifts, ws_online, ws_white_counter]:
+        for ws in [ws_users, ws_payments, ws_payments_cards, ws_payments_stars, ws_platega_crypto,
+                   ws_payments_cryptobot, ws_gifts, ws_online, ws_white_counter]:
             ws.freeze_panes = ws['A2']
 
         # Сохраняем файл
@@ -292,6 +324,7 @@ async def export_database_to_excel(message: Message):
         payments_cards_count = len(payments_cards_list)
         payments_stars_count = len(payments_stars_list)
         payments_cryptobot_count = len(payments_cryptobot_list)
+        payments_platega_crypto_count = len(payments_platega_crypto_list)
 
         await message.answer_document(
             document=FSInputFile('export.xlsx'),
@@ -303,6 +336,7 @@ async def export_database_to_excel(message: Message):
                     f"├ 💰 Платежей Platega СБП: {payments_count}\n"
                     f"├ 💳 Платежей по картам: {payments_cards_count}\n"
                     f"├ ⭐ Платежей Stars: {payments_stars_count}\n"
+                    f"├ 💰 Платежей Platega Crypto: {payments_platega_crypto_count}\n"
                     f"└ 💎 Крипто-платежей: {payments_cryptobot_count}\n"
         )
 
@@ -407,4 +441,3 @@ async def export_panel(message: Message):
     )
 
     logger.info(f"Администратор {message.from_user.id} выгрузил список пользователей панели")
-

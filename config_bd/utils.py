@@ -5,7 +5,7 @@ from datetime import datetime, date
 from typing import Optional, List, Tuple, Dict
 
 from config_bd.models import AsyncSessionLocal, Users, Payments, Gifts, PaymentsCryptobot, PaymentsStars, Online, \
-    WhiteCounter, PaymentsCards
+    WhiteCounter, PaymentsCards, PaymentsPlategaCrypto
 from logging_config import logger
 
 
@@ -233,7 +233,9 @@ class AsyncSQL:
                 .where(Payments.status == 'confirmed')
                 .union(
                     select(PaymentsStars.user_id).where(PaymentsStars.status == 'confirmed'),
-                    select(PaymentsCryptobot.user_id).where(PaymentsCryptobot.status == 'paid')
+                    select(PaymentsCryptobot.user_id).where(PaymentsCryptobot.status == 'paid'),
+                    select(PaymentsCards.user_id).where(PaymentsCards.status == 'confirmed'),
+                    select(PaymentsPlategaCrypto.user_id).where(PaymentsPlategaCrypto.status == 'confirmed')
                 )
                 .subquery()
             )
@@ -292,7 +294,7 @@ class AsyncSQL:
             logger.info(f"Query result for parameter '{parameter}' with value '{value}': {len(rows)}")
             return [row[0] for row in rows]
 
-    async def get_stat_by_ref_or_stamp(self, arg: str) -> Tuple[Optional[int], Optional[int], Optional[int], Optional[int], Optional[str]]:
+    async def get_stat_by_ref_or_stamp(self, arg: str) -> Tuple[Optional[int], Optional[int], Optional[int], Optional[int], Optional[int], Optional[str]]:
         """
         Возвращает статистику по пользователям, у которых Ref == arg,
         если таких нет – по пользователям с stamp == arg.
@@ -308,11 +310,12 @@ class AsyncSQL:
             source = 'stamp'
 
         if not users:
-            return None, None, None, None, None
+            return None, None, None, None, None, None
 
         total = len(users)
         with_sub = 0
         with_tarif = 0
+        with_tarif_not_block = 0
 
         for user_id in users:
             user_data = await self.get_user(user_id)
@@ -322,6 +325,8 @@ class AsyncSQL:
                     with_sub += 1
                 if user_data[5]:  # is_connect
                     with_tarif += 1
+                if user_data[5] and not user_data[3]:
+                    with_tarif_not_block += 1
 
         # Сумма подтверждённых платежей этих пользователей
         total_payments = 0
@@ -333,8 +338,9 @@ class AsyncSQL:
                 )
                 result = await session.execute(stmt)
                 total_payments = result.scalar() or 0
+                total_payments = total_payments // 2
 
-        return total, with_sub, with_tarif, total_payments, source
+        return total, with_sub, with_tarif, with_tarif_not_block, total_payments, source
 
     def get_parameters(self) -> List[str]:
         """Возвращает список доступных параметров для фильтрации пользователей."""
@@ -499,6 +505,13 @@ class AsyncSQL:
             result = await session.execute(stmt)
             return result.scalars().all()
 
+    async def get_pending_platega_crypto_payments(self) -> List[PaymentsPlategaCrypto]:
+        """Возвращает все платежи из таблицы payments со статусом 'pending'."""
+        async with self.session_factory() as session:
+            stmt = select(PaymentsPlategaCrypto).where(PaymentsPlategaCrypto.status == 'pending')
+            result = await session.execute(stmt)
+            return result.scalars().all()
+
     async def update_payment_status(self, transaction_id: str, new_status: str) -> None:
         """Обновляет статус платежа по transaction_id."""
         async with self.session_factory() as session:
@@ -510,6 +523,13 @@ class AsyncSQL:
         """Обновляет статус платежа по transaction_id."""
         async with self.session_factory() as session:
             stmt = update(PaymentsCards).where(PaymentsCards.transaction_id == transaction_id).values(status=new_status)
+            await session.execute(stmt)
+            await session.commit()
+
+    async def update_payment_platega_crypto_status(self, transaction_id: str, new_status: str) -> None:
+        """Обновляет статус платежа по transaction_id."""
+        async with self.session_factory() as session:
+            stmt = update(PaymentsPlategaCrypto).where(PaymentsPlategaCrypto.transaction_id == transaction_id).values(status=new_status)
             await session.execute(stmt)
             await session.commit()
 
@@ -632,6 +652,29 @@ class AsyncSQL:
                 logger.error(f"❌ Ошибка записи платежа Platega: {e}")
                 raise
 
+    async def add_platega_crypto_payment(self, user_id: int, amount: int, status: str, transaction_id: str, payload: str,
+                                       is_gift: bool = False) -> None:
+        """
+        Записывает платёж PlategaCard в таблицу payments.
+        """
+        async with self.session_factory() as session:
+            payment = PaymentsPlategaCrypto(
+                user_id=user_id,
+                amount=amount,
+                status=status,
+                transaction_id=transaction_id,
+                payload=payload,
+                is_gift=is_gift
+            )
+            session.add(payment)
+            try:
+                await session.commit()
+                logger.success(f"💰 Платёж Platega Crypto записан: user_id={user_id}, amount={amount}, is_gift={is_gift}")
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"❌ Ошибка записи платежа Platega: {e}")
+                raise
+
     async def add_cryptobot_payment(self, user_id: int, amount: float, currency: str, is_gift: bool, invoice_id: str,
                                     payload: str) -> None:
         """
@@ -667,6 +710,11 @@ class AsyncSQL:
         """Возвращает список всех платежей по картам (PaymentsCards)."""
         async with self.session_factory() as session:
             result = await session.execute(select(PaymentsCards))
+            return result.scalars().all()
+
+    async def get_all_payments_platega_crypto(self) -> List[PaymentsPlategaCrypto]:
+        async with self.session_factory() as session:
+            result = await session.execute(select(PaymentsPlategaCrypto))
             return result.scalars().all()
 
     async def get_all_payments_stars(self) -> List[PaymentsStars]:

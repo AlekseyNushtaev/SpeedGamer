@@ -14,7 +14,8 @@ from sqlalchemy import select, func
 from bot import sql
 from config import ADMIN_IDS
 from logging_config import logger
-from config_bd.models import AsyncSessionLocal, Users, Payments, PaymentsStars, PaymentsCryptobot, PaymentsCards
+from config_bd.models import AsyncSessionLocal, Users, Payments, PaymentsStars, PaymentsCryptobot, PaymentsCards, \
+    PaymentsPlategaCrypto
 
 router = Router()
 
@@ -62,12 +63,12 @@ async def stat_command(message: Message):
         return
 
     arg = args[1].strip()
-    total, with_sub, is_connect, total_payments, source = await sql.get_stat_by_ref_or_stamp(arg)
+    total, with_sub, is_connect, is_connect_not_block, total_payments, source = await sql.get_stat_by_ref_or_stamp(arg)
 
     if total is None:
         await message.answer(f"{arg} - нет совпадений")
     else:
-        await message.answer(f"{arg} {total} {with_sub} {is_connect} {total_payments}")
+        await message.answer(f"{arg} {total} {with_sub} {is_connect} {is_connect_not_block} - {total_payments} руб")
 
 
 @router.message(Command(commands=['anal_export']))
@@ -174,7 +175,14 @@ async def analytics_export(message: Message):
                 )
                 paid_cards = {row[0] for row in (await session.execute(stmt_paid_cards)).all()}
 
-                all_paid_users = paid_main.union(paid_stars).union(paid_crypto).union(paid_cards)
+                stmt_paid_platega_crypto = select(PaymentsPlategaCrypto.user_id).distinct().where(
+                    PaymentsPlategaCrypto.status == 'confirmed',
+                    PaymentsPlategaCrypto.amount != 1  # если нужно исключить тестовые платежи
+                )
+                paid_platega_crypto = {row[0] for row in (await session.execute(stmt_paid_platega_crypto)).all()}
+
+                all_paid_users = paid_main.union(paid_stars).union(paid_crypto).union(paid_cards).union(
+                    paid_platega_crypto)
 
                 for uid in set_new_total:
                     if uid in all_paid_users:
@@ -230,6 +238,17 @@ async def analytics_export(message: Message):
                     PaymentsCards.status == 'confirmed'
                 )
                 for uid, amt in (await session.execute(stmt_cards_new)).all():
+                    if uid in set_new_total:
+                        new_payments_amounts.append((uid, amt))
+
+                # Platega Crypto (новые пользователи)
+                stmt_platega_crypto_new = select(PaymentsPlategaCrypto.user_id,
+                                                 PaymentsPlategaCrypto.amount).where(
+                    PaymentsPlategaCrypto.time_created.between(start_date, end_date),
+                    PaymentsPlategaCrypto.amount != 1,
+                    PaymentsPlategaCrypto.status == 'confirmed'
+                )
+                for uid, amt in (await session.execute(stmt_platega_crypto_new)).all():
                     if uid in set_new_total:
                         new_payments_amounts.append((uid, amt))
 
@@ -293,6 +312,15 @@ async def analytics_export(message: Message):
                     PaymentsCards.status == 'confirmed'
                 )
                 for amount, is_gift in (await session.execute(stmt_cards_all)).all():
+                    all_payments.append((amount, is_gift))
+
+                # Platega Crypto (все пользователи)
+                stmt_platega_crypto_all = select(PaymentsPlategaCrypto.amount, PaymentsPlategaCrypto.is_gift).where(
+                    PaymentsPlategaCrypto.time_created.between(start_date, end_date),
+                    PaymentsPlategaCrypto.amount != 1,
+                    PaymentsPlategaCrypto.status == 'confirmed'
+                )
+                for amount, is_gift in (await session.execute(stmt_platega_crypto_all)).all():
                     all_payments.append((amount, is_gift))
 
                 total_revenue = sum(p[0] for p in all_payments)
