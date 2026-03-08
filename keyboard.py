@@ -61,7 +61,7 @@ def keyboard_start_bonus():
 def keyboard_start():
     keyboard = create_kb(1,
                          buy_vpn='🛒 Купить подписку',
-                         connect_vpn='🔗 Подключить SpeedGamer',
+                         connect_vpn='🔗 Подключить Ускоритель игр',
                          ref='👥 Рефералка',
                          buy_gift='🎁 Подарить подписку',
                          info='💡 Информация')
