@@ -242,8 +242,6 @@ class AsyncSQL:
             stmt = select(Users.user_id).where(
                 Users.is_connect == True,
                 Users.is_delete == False,
-                (Users.last_broadcast_date.is_(None)) |
-                (func.date(Users.last_broadcast_date) != today),
                 Users.user_id.notin_(paid_subq)
             )
             result = await session.execute(stmt)
