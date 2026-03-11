@@ -219,6 +219,18 @@ class AsyncSQL:
             result = await session.execute(stmt)
             return [row[0] for row in result.all()]
 
+
+    async def select_subscribe_yes(self):
+        async with self.session_factory() as session:
+            today = datetime.now().date()
+            stmt = select(Users.user_id).where(
+                Users.in_panel == True,
+                Users.is_delete == False,
+            )
+            result = await session.execute(stmt)
+            return [row[0] for row in result.all()]
+
+
     async def select_connected_never_paid(self) -> List[int]:
         """
         Возвращает список user_id, у которых is_tarif=True, is_delete=False,
@@ -350,6 +362,8 @@ class AsyncSQL:
             'connected_subscribe_off',
             'connected_subscribe_yes',
             'not_subscribed',
+            'subscribed',
+            'connected_never_paid',
             'connected_never_paid',
             'all_users'
         ]

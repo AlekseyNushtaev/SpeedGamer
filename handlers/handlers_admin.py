@@ -382,3 +382,26 @@ async def sync_panel(message: Message):
     )
     await message.answer(report)
     logger.info(report)
+
+
+@router.message(Command(commands=['check_cascade']))
+async def check_cascade(message: Message):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    users = await x3.get_all_users()
+    cnt = 0
+    for user in users:
+        try:
+            username = user.get('username', [])
+            if username.isdigit():
+                squad_1 = ['494bf6ce-d62b-4929-a980-dfc14b8b5ddb']
+                squad_2 = ['2e6f13b9-58a0-4f46-bd76-0d294f00ef18']
+                uuid = user.get('uuid')
+                squad_new = random.choice([squad_1, squad_2])
+                await x3.update_user_squads(uuid, squad_new)
+                cnt += 1
+                await asyncio.sleep(0.05)
+                print(cnt)
+        except:
+            print('ALLLLLLLLLLLLLLLLLLAAAAAAAARM')
+

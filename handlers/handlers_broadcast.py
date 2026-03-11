@@ -109,6 +109,8 @@ async def confirm_broadcast(message: Message, state: FSMContext):
         user_ids = await sql.select_connected_subscribe_yes()
     elif selected_parameter == 'not_subscribed':
         user_ids = await sql.select_subscribe_off()
+    elif selected_parameter == 'subscribed':
+        user_ids = await sql.select_subscribe_yes()
     elif selected_parameter == 'connected_never_paid':
         user_ids = await sql.select_connected_never_paid()
 
@@ -163,6 +165,9 @@ async def broadcast_confirm_send(callback: CallbackQuery, state: FSMContext, bot
     elif selected_parameter == 'not_subscribed':
         user_ids = await sql.select_subscribe_off()
         keyboard_broadcast = create_kb(1, free_vpn='🔥 Попробовать бесплатно')
+    elif selected_parameter == 'subscribed':
+        user_ids = await sql.select_subscribe_yes()
+        keyboard_broadcast = create_kb(1, connect_vpn='🔗 Подключить SpeedGamer')
     elif selected_parameter == 'connected_never_paid':
         user_ids = await sql.select_connected_never_paid()
         keyboard_broadcast = create_kb(1, r_120='🔥 Акция: 120 дней - 269 руб')
