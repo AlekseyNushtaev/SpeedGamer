@@ -108,9 +108,8 @@ class X3:
             vless_uuid = str(uuid.uuid1())
 
             if 'white' in user_id_str:
-                squad_1 = ['41d180d4-4f4c-46d7-81f0-76f45356e777']
-                squad_2 = ['db73ace8-663b-4ef4-91da-0bfa7abe6e90']
-                squad = random.choice([squad_1, squad_2])
+                squad_1 = ['86133527-d770-4e0d-a567-75f8309cf22f']
+                squad = squad_1
                 trafficLimitStrategy = "MONTH"
                 trafficLimitBytes = 80530636800
                 hwidDeviceLimit = 1
