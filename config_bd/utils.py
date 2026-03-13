@@ -812,3 +812,12 @@ class AsyncSQL:
             result = await session.execute(stmt)
             await session.commit()
             return result.rowcount
+
+    async def get_users_with_payment(self) -> List[int]:
+        """Возвращает список user_id пользователей с has_discount=True и is_delete=False."""
+        async with self.session_factory() as session:
+            stmt = select(Users.user_id).where(
+                Users.reserve_field == True
+            )
+            result = await session.execute(stmt)
+            return [row[0] for row in result.all()]
