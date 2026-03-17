@@ -583,11 +583,11 @@ async def send_push_command(message: Message):
             continue
         candidates.append(user.user_id)
 
-        if not candidates:
-            await message.answer("❌ Нет пользователей, удовлетворяющих условиям.")
-            return
-        else:
-            await message.answer(f"Всего {len(candidates)} пользователей, удовлетворяющих условиям.")
+    if not candidates:
+        await message.answer("❌ Нет пользователей, удовлетворяющих условиям.")
+        return
+    else:
+        await message.answer(f"Всего {len(candidates)} пользователей, удовлетворяющих условиям.")
 
     push_text = '''
 🥵 Это была DDoS-атака!
