@@ -127,7 +127,7 @@ def keyboard_subscription(sub_url, sub_url_white):
         buttons.append([InlineKeyboardButton(text="💫 Ускоритель игр PRO", url=sub_url)])
     if sub_url_white:
         buttons.append([InlineKeyboardButton(text="🦾 Включи мобильный интернет", url=sub_url_white)])
-    # buttons.append([InlineKeyboardButton(text="❌ Если страница не загружается", callback_data='import')])
+    buttons.append([InlineKeyboardButton(text="❌ Если страница не загружается", callback_data='import')])
     buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data='back_to_main')])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -162,7 +162,7 @@ def keyboard_import_sub(app_callback: str, has_casual: bool, has_white: bool):
 def keyboard_sub_after_buy(sub_url):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📋 В личный кабинет", url=sub_url)],
-        # [InlineKeyboardButton(text="❌ Если страница не загружается", callback_data='import')],
+        [InlineKeyboardButton(text="❌ Если страница не загружается", callback_data='import')],
         [InlineKeyboardButton(text="🎁 Подарить подписку", callback_data="buy_gift")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data='back_to_main')],
     ])

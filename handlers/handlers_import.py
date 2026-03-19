@@ -1,7 +1,7 @@
 import urllib.parse
 
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InputMediaPhoto
 
 from bot import sql, x3
 from keyboard import (
@@ -16,6 +16,17 @@ from lexicon import lexicon
 router: Router = Router()
 
 OS_CALLBACKS = {'import_android', 'import_ios', 'import_windows', 'import_macos'}
+
+HAPP_PHOTOS = [
+    'AgACAgIAAxkBAAEPMfNpuuFYB037vCUdedfpqS5ypOaVZwAC4xhrG0h32Emm-Cx1F38P2AEAAwIAA3kAAzoE',
+    'AgACAgIAAxkBAAEPMfVpuuGdCuGgeeOBc1e4cQthdWA3OAAC6BhrG0h32EkCxf1P9qKWzwEAAwIAA3kAAzoE',
+]
+
+V2_PHOTOS = [
+    'AgACAgIAAxkBAAEPMfhpuuGu0Rg_-nKG-PcvViCGfoN4AQAC6RhrG0h32El2wcWMdvvLrgEAAwIAA3kAAzoE',
+    'AgACAgIAAxkBAAEPMfppuuHSQmUSRF9AtlPh8S_vYZpICgAC6hhrG0h32Elfi-ITfrYC6QEAAwIAA3kAAzoE',
+    'AgACAgIAAxkBAAEPMfxpuuHnZOPTsCVK3JKqaYR_2TzIUAAC7RhrG0h32EmvaFothcL4KAEAAwIAA3kAAzoE',
+]
 
 OS_DISPLAY = {
     'android': '🤖 Android',
@@ -145,19 +156,25 @@ async def import_end(callback: CallbackQuery):
 
     urls = IMPORT_URLS[os_key][app_key]
     url_app = urls['url_app']
-    url_import = urls['url_import'].replace('{sub_link}', sub_url)
 
-    text = lexicon['import_end'].format(
+    if app_key == 'happ':
+        lexicon_key = 'import_end_happ'
+        photos = HAPP_PHOTOS
+    else:
+        lexicon_key = 'import_end_v2'
+        photos = V2_PHOTOS
+
+    caption = lexicon[lexicon_key].format(
         os=OS_DISPLAY[os_key],
         app=APP_DISPLAY[app_key],
         label=label,
-        url_import=url_import,
-        sub_link=sub_url,
+        url_app=url_app,
+        url_import=sub_url,
     )
 
-    await callback.message.answer(
-        text=text,
-        reply_markup=keyboard_import_end(url_app),
-        parse_mode='HTML',
-    )
+    media = [InputMediaPhoto(media=file_id) for file_id in photos]
+    media[0] = InputMediaPhoto(media=photos[0], caption=caption, parse_mode='HTML')
+
+    await callback.message.answer_media_group(media=media)
+
 
