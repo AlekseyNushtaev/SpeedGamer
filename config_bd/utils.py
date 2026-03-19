@@ -232,6 +232,8 @@ class AsyncSQL:
             stmt = select(Users.user_id).where(
                 Users.in_panel == True,
                 Users.is_delete == False,
+                (Users.last_broadcast_date.is_(None)) |
+                (func.date(Users.last_broadcast_date) != today)
             )
             result = await session.execute(stmt)
             return [row[0] for row in result.all()]
