@@ -124,9 +124,9 @@ def keyboard_gift_tariff():
 def keyboard_subscription(sub_url, sub_url_white):
     buttons = []
     if sub_url:
-        buttons.append([InlineKeyboardButton(text="💫 Ускоритель игр PRO", url=sub_url)])
+        buttons.append([InlineKeyboardButton(text="💫 Ваша подписка на Ускоритель", url=sub_url)])
     if sub_url_white:
-        buttons.append([InlineKeyboardButton(text="🦾 Включи мобильный интернет", url=sub_url_white)])
+        buttons.append([InlineKeyboardButton(text="🦾 Включи мобильную связь(белые списки)", url=sub_url_white)])
     buttons.append([InlineKeyboardButton(text="❌ Если страница не загружается", callback_data='import')])
     buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data='back_to_main')])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -152,9 +152,9 @@ def keyboard_import_app(os_callback: str):
 def keyboard_import_sub(app_callback: str, has_casual: bool, has_white: bool):
     buttons = []
     if has_casual:
-        buttons.append([InlineKeyboardButton(text="💫 Ускоритель игр PRO", callback_data=f"{app_callback}_casual")])
+        buttons.append([InlineKeyboardButton(text="💫 Ваша подписка на VPN", callback_data=f"{app_callback}_casual")])
     if has_white:
-        buttons.append([InlineKeyboardButton(text="🦾 Включи мобильный интернет", callback_data=f"{app_callback}_white")])
+        buttons.append([InlineKeyboardButton(text="🦾 Включи мобильную связь(белые списки)", callback_data=f"{app_callback}_white")])
     buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
