@@ -343,12 +343,13 @@ class X3:
     async def activ(self, user_id: str):
         result = {'activ': '🔎 - Не подключён', 'time': '-'}
         try:
-            users = await self.get_user_by_username()
+            users = await self.get_user_by_username(user_id)
             if not users or 'response' not in users or not users['response']:
                 logger.info(f"Пользователь {user_id} не найден в системе")
                 return result
 
-            user = users['response'][0]
+            raw = users['response']
+            user = raw[0] if isinstance(raw, list) else raw
             current_time = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
 
             expiry_time_str = user.get('expireAt')
