@@ -349,6 +349,77 @@ async def sync_panel(message: Message):
     logger.info(report)
 
 
+@router.message(Command(commands=['shortuuid_export']))
+async def shortuuid_export(message: Message):
+    """Синхронизация shortUuid из панели в поля subscribtion / white_subscription в БД."""
+    if message.from_user.id not in ADMIN_IDS:
+        return
+
+    await message.answer("🔄 Загружаю пользователей панели и записываю shortUuid в БД...")
+
+    try:
+        panel_users = await x3.get_all_users()
+    except Exception as e:
+        logger.error(f"shortuuid_export: панель: {e}")
+        await message.answer(f"❌ Ошибка при запросе панели: {e}")
+        return
+
+    updated_sub = 0
+    updated_white = 0
+    skip_no_db = 0
+    skip_no_tg = 0
+    skip_no_short = 0
+    errors = 0
+
+    for user in panel_users:
+        tg_id = user.get("telegramId")
+        username = user.get("username") or ""
+        if tg_id is None:
+            if username.isdigit():
+                tg_id = int(username)
+            else:
+                skip_no_tg += 1
+                continue
+        else:
+            tg_id = int(tg_id)
+
+        short_uuid = user.get("shortUuid")
+        if not short_uuid:
+            skip_no_short += 1
+            continue
+
+        db_user = await sql.get_user(tg_id)
+        if not db_user:
+            skip_no_db += 1
+            continue
+
+        is_white = "white" in username
+        try:
+            if is_white:
+                await sql.update_white_subscription(tg_id, short_uuid)
+                updated_white += 1
+            else:
+                await sql.update_subscribtion(tg_id, short_uuid)
+                updated_sub += 1
+            logger.success(f"shortuuid_export user {tg_id}: {short_uuid}")
+        except Exception as e:
+            errors += 1
+            logger.error(f"shortuuid_export user {tg_id}: {e}")
+
+    report = (
+        f"✅ Готово.\n"
+        f"📊 В панели записей: {len(panel_users)}\n"
+        f"📝 subscribtion обновлено: {updated_sub}\n"
+        f"📝 white_subscription обновлено: {updated_white}\n"
+        f"⏭ без telegramId/username: {skip_no_tg}\n"
+        f"⏭ без shortUuid: {skip_no_short}\n"
+        f"⏭ нет в БД: {skip_no_db}\n"
+        f"❌ ошибок записи: {errors}"
+    )
+    await message.answer(report)
+    logger.info(report)
+
+
 @router.message(Command(commands=['check_users']))
 async def check_users_command(message: Message):
     """Проверка соответствия дат окончания подписки у оплаченных пользователей (has_discount=True)"""
