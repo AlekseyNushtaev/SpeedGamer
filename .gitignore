@@ -5,6 +5,8 @@ __pycache__/
 sqlite3.db
 export.xlsx
 # C extensions
+config.py/speedgamer.db-shm
+config.py/speedgamer.db-wal
 *.so
 creds.json
 d.sh

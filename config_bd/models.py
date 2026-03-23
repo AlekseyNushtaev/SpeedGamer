@@ -5,39 +5,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import DeclarativeBase
 from datetime import datetime
 
-_sqlite_connect_log = logging.getLogger(__name__)
-
 DB_URL = "sqlite+aiosqlite:///config_bd/speedgamer.db"
-# timeout: сколько секунд ждать при занятой БД (sqlite3 busy handler)
-engine = create_async_engine(
-    DB_URL,
-    echo=False,
-    connect_args={"timeout": 30.0},
-)
-
-
-def _set_sqlite_pragma(dbapi_connection, connection_record):
-    """WAL и таймауты — best-effort: при битой БД или -wal/-shm не падаем на первом PRAGMA."""
-    cursor = dbapi_connection.cursor()
-    try:
-        cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA synchronous=NORMAL")
-    except Exception as e:
-        _sqlite_connect_log.warning(
-            "SQLite: не удалось включить WAL/synchronous (%s). "
-            "Если в логах было «database disk image is malformed» — проверьте целостность файла БД и файлы .db-wal/.db-shm.",
-            e,
-        )
-    try:
-        cursor.execute("PRAGMA busy_timeout=30000")
-    except Exception as e:
-        _sqlite_connect_log.warning("SQLite: PRAGMA busy_timeout не применён: %s", e)
-    finally:
-        cursor.close()
-
-
-event.listen(engine.sync_engine, "connect", _set_sqlite_pragma)
-
+engine = create_async_engine(DB_URL, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 
