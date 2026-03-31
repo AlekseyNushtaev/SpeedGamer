@@ -152,19 +152,12 @@ async def broadcast_confirm_send(callback: CallbackQuery, state: FSMContext, bot
         keyboard_broadcast = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    InlineKeyboardButton(
-                        text="🛒 Купить подписку",
-                        callback_data="buy_vpn",
-                        style=STYLE_SUCCESS,
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        text="🌐 Наш сайт",
-                        url="https://4games.top",
-                        style=STYLE_PRIMARY,
-                    )
-                ],
+                InlineKeyboardButton(
+                    text="Поделиться 💬",
+                    url=f"https://t.me/share/url?url={BOT_URL}?start=ref{user_id}&text={urllib.parse.quote('Вот ссылка для тебя на надежный VPN!')}",
+                    style=STYLE_SUCCESS,
+                )
+            ]
             ]
         )
     elif selected_parameter == 'not_connected_subscribe_yes':
