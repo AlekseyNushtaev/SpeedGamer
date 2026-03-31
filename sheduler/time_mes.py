@@ -20,6 +20,11 @@ def _utc_now_naive() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
 
 
+def _fmt_utc0(dt: datetime) -> str:
+    """Naive datetime считается уже в UTC (как везде в time_mes)."""
+    return dt.strftime('%Y-%m-%d %H:%M:%S') + ' UTC+0'
+
+
 def _normalize_end_utc(dt: Optional[datetime]) -> Optional[datetime]:
     if dt is None:
         return None
@@ -91,10 +96,13 @@ async def _send_admin_text_chunks(bot: Bot, chat_id: int, text: str):
 
 async def send_message_cron(bot: Bot):
     now = _utc_now_naive()
+    window_end = now + WINDOW
     candidate_rows = await sql.select_rows_for_subscription_expiry_push(now, WINDOW)
     await bot.send_message(
         1012882762,
-        f'Начинаю рассылку (UTC, окно {WINDOW}, кандидатов (точная выборка по окнам): {len(candidate_rows)})',
+        'Начинаю рассылку. Окно UTC+0: '
+        f'{_fmt_utc0(now)} — {_fmt_utc0(window_end)} '
+        f'({WINDOW}). Кандидатов: {len(candidate_rows)}.',
     )
     sent_count_7 = 0
     sent_count_3 = 0
@@ -254,7 +262,7 @@ async def send_message_cron(bot: Bot):
 за 7 дней: {sent_count_7}
 за 3 дня: {sent_count_3}
 за 1 день: {sent_count_1}
-за 1 час до конца (текст push_0): {sent_count_0}
+за 1 час: {sent_count_0}
 после окончания каждые 3 дня: {sent_count_week}
 повторный триал: {sent_count_second_chance}
 
