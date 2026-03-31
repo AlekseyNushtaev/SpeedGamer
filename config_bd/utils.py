@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy import select, update, func
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional, List, Tuple, Dict, Any
 
 from config_bd.models import AsyncSessionLocal, Users, Payments, Gifts, PaymentsCryptobot, PaymentsStars, Online, \
@@ -143,7 +143,14 @@ class AsyncSQL:
 
     async def mark_notification_as_sent(self, user_id: int):
         async with self.session_factory() as session:
-            stmt = update(Users).where(Users.user_id == user_id).values(last_notification_date=date.today())
+            utc_today = datetime.now(timezone.utc).date()
+            stmt = update(Users).where(Users.user_id == user_id).values(last_notification_date=utc_today)
+            await session.execute(stmt)
+            await session.commit()
+
+    async def update_field_str_1(self, user_id: int, value: Optional[str]):
+        async with self.session_factory() as session:
+            stmt = update(Users).where(Users.user_id == user_id).values(field_str_1=value)
             await session.execute(stmt)
             await session.commit()
 

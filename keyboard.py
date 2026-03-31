@@ -1,3 +1,4 @@
+import urllib.parse
 from typing import List, Optional
 
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -453,7 +454,7 @@ def ref_keyboard(user_id):
             [
                 InlineKeyboardButton(
                     text="Пригласить друзей🫶",
-                    switch_inline_query="partner",
+                    url=f"https://t.me/share/url?url={BOT_URL}?start=ref{user_id}",
                     style=STYLE_SUCCESS,
                 )
             ],
