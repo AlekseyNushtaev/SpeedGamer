@@ -12,12 +12,6 @@ from keyboard import keyboard_tariff, keyboard_tariff_trial, create_kb, STYLE_PR
 from lexicon import lexicon
 from logging_config import logger
 
-# Индексы в кортеже get_user (см. config_bd.utils.AsyncSQL.get_user)
-_IX_SUB_END = 9
-_IX_RESERVE = 8
-_IX_TTCLID = 15
-_IX_FIELD_STR_1 = 21
-
 WINDOW = timedelta(minutes=10)
 STATE_VERSION = 1
 
@@ -97,10 +91,10 @@ async def _send_admin_text_chunks(bot: Bot, chat_id: int, text: str):
 
 async def send_message_cron(bot: Bot):
     now = _utc_now_naive()
-    candidate_ids = await sql.select_user_ids_for_subscription_expiry_push(now, WINDOW)
+    candidate_rows = await sql.select_rows_for_subscription_expiry_push(now, WINDOW)
     await bot.send_message(
         1012882762,
-        f'Начинаю рассылку (UTC, окно {WINDOW}, кандидатов по дате end: {len(candidate_ids)})',
+        f'Начинаю рассылку (UTC, окно {WINDOW}, кандидатов (точная выборка по окнам): {len(candidate_rows)})',
     )
     sent_count_7 = 0
     sent_count_3 = 0
@@ -116,25 +110,14 @@ async def send_message_cron(bot: Bot):
     ids_week: List[int] = []
     ids_second_chance: List[int] = []
 
-    for user_id in candidate_ids:
+    for user_id, end_raw, is_pay_flag, ttclid, field_str_1_raw in candidate_rows:
         try:
-            user_data = await sql.get_user(user_id)
-            if not user_data:
-                continue
-
-            end_raw = user_data[_IX_SUB_END]
-            if not end_raw:
-                continue
-
             end = _normalize_end_utc(end_raw)
             if end is None:
                 continue
 
             end_key = _end_key(end)
-            sent = _load_state(user_data[_IX_FIELD_STR_1], end_key)
-
-            is_pay_flag = user_data[_IX_RESERVE]
-            ttclid = user_data[_IX_TTCLID]
+            sent = _load_state(field_str_1_raw, end_key)
 
             if is_pay_flag:
                 keyboard = keyboard_tariff()
@@ -284,9 +267,7 @@ async def send_message_cron(bot: Bot):
 {_format_ids_line('за 1 час', ids_0)}
 {_format_ids_line('после окончания (push_off)', ids_week)}
 {_format_ids_line('повторный триал (second_chance)', ids_second_chance)}
-
-— все id, кому ушло сообщение ({len(all_sent_ids)}) —
-{", ".join(map(str, all_sent_ids)) if all_sent_ids else '—'}'''
+'''
     await _send_admin_text_chunks(bot, 1012882762, report_body)
     total_sent = len(all_sent_ids)
     logger.info(
