@@ -26,21 +26,43 @@ router = Router()
 def convert_stars_to_rub(amount: int) -> Optional[int]:
     mapping = {
         66: 99,
-        179: 269,
-        199: 299,
-        333: 499,
         99: 99,
+        139: 139,
+        179: 269,
+        199: 199,
         269: 269,
         299: 299,
-        499: 499
+        333: 499,
+        369: 369,
+        399: 399,
+        499: 499,
+        699: 699,
     }
     return mapping.get(amount)
 
 
 def convert_crypto_to_rub(currency: str, amount: str) -> Optional[int]:
     mapping = {
-        'TON': {'0.9': 99, '2.5': 269, '2.8': 299, '4.6': 499},
-        'USDT': {'1.3': 99, '3.5': 269, '4.0': 299, '6.5': 499}
+        'TON': {
+            '0.9': 99,
+            '1.9': 199,
+            '2.5': 269,
+            '2.8': 299,
+            '3.4': 369,
+            '3.9': 399,
+            '4.6': 499,
+            '6.5': 699,
+        },
+        'USDT': {
+            '1.3': 99,
+            '2.6': 199,
+            '3.5': 269,
+            '4.0': 299,
+            '4.8': 369,
+            '5.2': 399,
+            '6.5': 499,
+            '9.1': 699,
+        },
     }
     return mapping.get(currency, {}).get(amount)
 
@@ -84,12 +106,14 @@ def _sync_build_analytics_excel(monthly_data: dict, daily_data_by_month: dict) -
         ('Пользователей на конец месяца', 'cumulative_users'),
         ('Платежей 99₽ (шт)', 'sum_99_count'),
         ('Сумма 99₽ (₽)', 'sum_99_amount'),
-        ('Платежей 269₽ (шт)', 'sum_269_count'),
-        ('Сумма 269₽ (₽)', 'sum_269_amount'),
-        ('Платежей 299₽ (шт)', 'sum_299_count'),
-        ('Сумма 299₽ (₽)', 'sum_299_amount'),
-        ('Платежей 499₽ (шт)', 'sum_499_count'),
-        ('Сумма 499₽ (₽)', 'sum_499_amount'),
+        ('Платежей 199₽ (шт)', 'sum_199_count'),
+        ('Сумма 199₽ (₽)', 'sum_199_amount'),
+        ('Платежей 369₽ (шт)', 'sum_369_count'),
+        ('Сумма 369₽ (₽)', 'sum_369_amount'),
+        ('Платежей 399₽ (шт)', 'sum_399_count'),
+        ('Сумма 399₽ (₽)', 'sum_399_amount'),
+        ('Платежей 699₽ (шт)', 'sum_699_count'),
+        ('Сумма 699₽ (₽)', 'sum_699_amount'),
         ('Подарков (шт)', 'gift_count'),
         ('Сумма подарков (₽)', 'gift_amount'),
     ]
@@ -541,9 +565,10 @@ async def analytics_export(message: Message):
 
                 # Разбивка по суммам
                 sum_99_count = sum_99_amount = 0
-                sum_269_count = sum_269_amount = 0
-                sum_299_count = sum_299_amount = 0
-                sum_499_count = sum_499_amount = 0
+                sum_199_count = sum_199_amount = 0
+                sum_369_count = sum_369_amount = 0
+                sum_399_count = sum_399_amount = 0
+                sum_699_count = sum_699_amount = 0
                 gift_count = gift_amount = 0
 
                 for amount, is_gift in all_payments:
@@ -554,15 +579,18 @@ async def analytics_export(message: Message):
                         if amount == 99:
                             sum_99_count += 1
                             sum_99_amount += amount
-                        elif amount == 269:
-                            sum_269_count += 1
-                            sum_269_amount += amount
-                        elif amount == 299:
-                            sum_299_count += 1
-                            sum_299_amount += amount
-                        elif amount == 499:
-                            sum_499_count += 1
-                            sum_499_amount += amount
+                        elif amount in (139, 199):
+                            sum_199_count += 1
+                            sum_199_amount += amount
+                        elif amount in (269, 369):
+                            sum_369_count += 1
+                            sum_369_amount += amount
+                        elif amount in (299, 399):
+                            sum_399_count += 1
+                            sum_399_amount += amount
+                        elif amount in (499, 699):
+                            sum_699_count += 1
+                            sum_699_amount += amount
 
                 monthly_data[month_key] = {
                     'new_total': len(new_total),
@@ -587,12 +615,14 @@ async def analytics_export(message: Message):
                     'cumulative_users': cumulative_users,
                     'sum_99_count': sum_99_count,
                     'sum_99_amount': sum_99_amount,
-                    'sum_269_count': sum_269_count,
-                    'sum_269_amount': sum_269_amount,
-                    'sum_299_count': sum_299_count,
-                    'sum_299_amount': sum_299_amount,
-                    'sum_499_count': sum_499_count,
-                    'sum_499_amount': sum_499_amount,
+                    'sum_199_count': sum_199_count,
+                    'sum_199_amount': sum_199_amount,
+                    'sum_369_count': sum_369_count,
+                    'sum_369_amount': sum_369_amount,
+                    'sum_399_count': sum_399_count,
+                    'sum_399_amount': sum_399_amount,
+                    'sum_699_count': sum_699_count,
+                    'sum_699_amount': sum_699_amount,
                     'gift_count': gift_count,
                     'gift_amount': gift_amount,
                 }

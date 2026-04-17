@@ -171,7 +171,7 @@ async def broadcast_confirm_send(callback: CallbackQuery, state: FSMContext, bot
         keyboard_broadcast = keyboard_tariff()
     elif selected_parameter == 'connected_never_paid':
         user_ids = await sql.select_connected_never_paid()
-        keyboard_broadcast = create_kb(1, styles={'r_120': STYLE_SUCCESS}, r_120='🔥 Акция: 120 дней - 269 руб')
+        keyboard_broadcast = create_kb(1, styles={'r_120': STYLE_SUCCESS}, r_120='🔥 Акция: 120 дней - 369 руб')
 
     # Проверяем, есть ли пользователи для отправки
     if not user_ids:
