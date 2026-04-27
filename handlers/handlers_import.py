@@ -142,7 +142,7 @@ async def import_end(callback: CallbackQuery):
         label = '🦾 Включи мобильный интернет'
     else:
         sub_url = await x3.sublink(user_id)
-        label = '💫 Ускоритель игр PRO'
+        label = '💫 ВПН ДЛЯ СВОИХ PRO'
 
     if not sub_url:
         await callback.message.answer(

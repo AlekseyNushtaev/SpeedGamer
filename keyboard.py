@@ -81,7 +81,7 @@ def keyboard_start():
             "buy_gift": STYLE_SUCCESS,
         },
         buy_vpn="🛒 Купить подписку",
-        connect_vpn="🔗 Подключить Ускоритель игр",
+        connect_vpn="🔗 Подключить ВПН",
         ref="👥 Рефералка",
         buy_gift="🎁 Подарить подписку",
     )
@@ -95,10 +95,25 @@ _STYLES_TARIFF = {
     "r_180": STYLE_SUCCESS,
     "r_120": STYLE_SUCCESS,
     "r_white_30": STYLE_PRIMARY,
+    "r_new_7": STYLE_PRIMARY,
+    "r_new_30": STYLE_PRIMARY,
+    "r_new_90": STYLE_SUCCESS,
+    "r_new_3000": STYLE_SUCCESS,
 }
 
 
-def keyboard_tariff_bonus():
+def keyboard_tariff_bonus(*, friends: bool = False):
+    if friends:
+        return create_kb(
+            1,
+            styles=_STYLES_TARIFF,
+            r_3="🔥 10 ₽ на 3 дня",
+            r_new_7="🤌 7 дней - 99 руб",
+            r_new_30="🤝 30 дней - 249 руб",
+            r_new_90="👌 90 дней - 599 руб",
+            r_new_3000="💪 Навсегда - 3490 руб",
+            back_to_main="🔙 Назад",
+        )
     return create_kb(
         1,
         styles=_STYLES_TARIFF,
@@ -112,7 +127,17 @@ def keyboard_tariff_bonus():
     )
 
 
-def keyboard_tariff():
+def keyboard_tariff(*, friends: bool = False):
+    if friends:
+        return create_kb(
+            1,
+            styles={k: v for k, v in _STYLES_TARIFF.items() if k != "r_3"},
+            r_new_7="🤌 7 дней - 99 руб",
+            r_new_30="🤝 30 дней - 249 руб",
+            r_new_90="👌 90 дней - 599 руб",
+            r_new_3000="💪 Навсегда - 3490 руб",
+            back_to_main="🔙 Назад",
+        )
     return create_kb(
         1,
         styles={k: v for k, v in _STYLES_TARIFF.items() if k != "r_3"},
@@ -125,7 +150,17 @@ def keyboard_tariff():
     )
 
 
-def keyboard_tariff_trial():
+def keyboard_tariff_trial(*, friends: bool = False):
+    if friends:
+        return create_kb(
+            1,
+            styles={k: v for k, v in _STYLES_TARIFF.items() if k != "r_3"},
+            r_new_7="🤌 7 дней - 99 руб",
+            r_new_30="🤝 30 дней - 249 руб",
+            r_new_90="👌 90 дней - 599 руб",
+            r_new_3000="💪 Навсегда - 3490 руб",
+            back_to_main="🔙 Назад",
+        )
     return create_kb(
         1,
         styles=_STYLES_TARIFF,
@@ -145,10 +180,24 @@ _STYLES_GIFT = {
     "gift_r_90": STYLE_SUCCESS,
     "gift_r_180": STYLE_SUCCESS,
     "gift_r_white_30": STYLE_PRIMARY,
+    "gift_r_new_7": STYLE_PRIMARY,
+    "gift_r_new_30": STYLE_PRIMARY,
+    "gift_r_new_90": STYLE_SUCCESS,
+    "gift_r_new_3000": STYLE_SUCCESS,
 }
 
 
-def keyboard_gift_tariff():
+def keyboard_gift_tariff(*, friends: bool = False):
+    if friends:
+        return create_kb(
+            1,
+            styles=_STYLES_GIFT,
+            gift_r_new_7="🤌 7 дней - 99 руб",
+            gift_r_new_30="🤝 30 дней - 249 руб",
+            gift_r_new_90="👌 90 дней - 599 руб",
+            gift_r_new_3000="💪 Навсегда - 3490 руб",
+            back_to_main="🔙 Назад",
+        )
     return create_kb(
         1,
         styles=_STYLES_GIFT,
@@ -167,7 +216,7 @@ def keyboard_subscription(sub_url, sub_url_white):
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text="💫 Ваша подписка на Ускоритель",
+                    text="💫 Ваша подписка ВПН",
                     url=sub_url,
                     style=STYLE_PRIMARY,
                 )
@@ -241,7 +290,7 @@ def keyboard_import_sub(app_callback: str, has_casual: bool, has_white: bool):
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text="💫 Ваша подписка на VPN",
+                    text="💫 Ваша подписка ВПН",
                     callback_data=f"{app_callback}_casual",
                     style=STYLE_PRIMARY,
                 )
@@ -444,7 +493,7 @@ def ref_keyboard(user_id):
             [
                 InlineKeyboardButton(
                     text="Пригласить друзей🫶",
-                    url=f"https://t.me/share/url?url={BOT_URL}?start=ref{user_id}&text={urllib.parse.quote('Вот ссылка для тебя на надежный VPN!')}",
+                    url=f"https://t.me/share/url?url={BOT_URL}?start=ref{user_id}&text={urllib.parse.quote('Вот ссылка на быстрый ВПН для своих!')}",
                     style=STYLE_SUCCESS,
                 )
             ],
@@ -459,7 +508,7 @@ def keyboard_inline_ref(user_id):
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🔗 Подключить Ускоритель игр",
+                    text="🔗 Подключить ВПН",
                     url=f"{BOT_URL}?start=ref{user_id}",
                     style=STYLE_PRIMARY,
                 )

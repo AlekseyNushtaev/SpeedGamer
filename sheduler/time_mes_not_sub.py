@@ -2,6 +2,7 @@ from datetime import datetime
 
 from bot import bot, sql
 from config import CHECKER_ID
+from friends_vpn import is_friends_only_locked
 from keyboard import create_kb, STYLE_PRIMARY, STYLE_SUCCESS
 from lexicon import lexicon
 from logging_config import logger
@@ -32,6 +33,8 @@ async def send_push_cron(debug: bool = False):
                 # Получаем данные пользователя
                 user_data = await sql.get_user(user_id)
                 if not user_data:
+                    continue
+                if is_friends_only_locked(user_data):
                     continue
 
                 create_time = user_data[6]
@@ -104,13 +107,13 @@ async def send_push_cron(debug: bool = False):
                                     'connect_vpn': STYLE_PRIMARY,
                                     'video_faq': STYLE_PRIMARY,
                                 },
-                                connect_vpn='🔗 Подключить SpeedGamer',
+                                connect_vpn='🔗 Подключить ВПН',
                                 video_faq='🎥 Видеоинструкция',
                             )
                             keyboard_broadcast_video = create_kb(
                                 1,
                                 styles={'connect_vpn': STYLE_PRIMARY},
-                                connect_vpn='🔗 Подключить SpeedGamer',
+                                connect_vpn='🔗 Подключить ВПН',
                             )
                             if video_flag:
                                 await bot.send_video(

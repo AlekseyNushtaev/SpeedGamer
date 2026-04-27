@@ -188,6 +188,38 @@ class AsyncSQL:
             await session.execute(stmt)
             await session.commit()
 
+    async def try_set_ref_from_invite(self, user_id: int, ref: str) -> bool:
+        if not str(ref).strip():
+            return False
+        async with self.session_factory() as session:
+            stmt = (
+                update(Users)
+                .where(
+                    Users.user_id == user_id,
+                    or_(Users.ref.is_(None), Users.ref == ''),
+                )
+                .values(ref=str(ref))
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            return (result.rowcount or 0) > 0
+
+    async def try_set_stamp_from_invite(self, user_id: int, stamp: str) -> bool:
+        if not str(stamp).strip():
+            return False
+        async with self.session_factory() as session:
+            stmt = (
+                update(Users)
+                .where(
+                    Users.user_id == user_id,
+                    or_(Users.stamp.is_(None), Users.stamp == ''),
+                )
+                .values(stamp=str(stamp))
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            return (result.rowcount or 0) > 0
+
     async def update_reserve_field(self, user_id: int):
         async with self.session_factory() as session:
             stmt = update(Users).where(Users.user_id == user_id).values(reserve_field=True)
@@ -807,10 +839,10 @@ class AsyncSQL:
                 await session.rollback()
                 logger.error(f"Error updating broadcast status for user {user_id}: {e}")
 
-    async def activate_gift(self, gift_id: str, recipient_id: int) -> Tuple[bool, Optional[int], Optional[bool]]:
+    async def activate_gift(self, gift_id: str, recipient_id: int) -> Tuple[bool, Optional[int], Optional[bool], Optional[int]]:
         """
         Активирует подарок по gift_id для указанного получателя.
-        Возвращает (успех, duration, white_flag) или (False, None, None) если подарок не найден или уже активирован.
+        Возвращает (успех, duration, white_flag, giver_id) или (False, None, None, None) если подарок не найден или уже активирован.
         """
         async with self.session_factory() as session:
             # Проверяем существование и статус подарка
@@ -824,19 +856,20 @@ class AsyncSQL:
 
             if not gift:
                 logger.warning(f"Gift {gift_id} not found or already activated")
-                return False, None, None
+                return False, None, None, None
 
+            giver_id = int(gift.giver_id)
             # Активируем подарок
             gift.flag = True
             gift.recepient_id = recipient_id
             try:
                 await session.commit()
                 logger.info(f"Gift {gift_id} activated for user {recipient_id}")
-                return True, gift.duration, gift.white_flag
+                return True, gift.duration, gift.white_flag, giver_id
             except Exception as e:
                 await session.rollback()
                 logger.error(f"Error activating gift {gift_id} for user {recipient_id}: {e}")
-                return False, None, None
+                return False, None, None, None
 
     async def get_pending_platega_payments(self) -> List[Payments]:
         """Возвращает все платежи из таблицы payments со статусом 'pending'."""

@@ -5,8 +5,10 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQu
 
 from bot import sql
 from config import CRYPTOBOT_API_TOKEN, ADMIN_IDS, BOT_URL
+from friends_vpn import pro_hwid_device_limit_for_user_row
 from keyboard import create_kb, STYLE_PRIMARY
-from lexicon import lexicon, dct_price, dct_desc
+from lexicon import lexicon, payment_link_pro_for_hwid
+from tariff_resolve import tariff_days_for_x3, tariff_rub_and_desc
 from logging_config import logger
 
 router: Router = Router()
@@ -137,34 +139,40 @@ async def process_payment_crypto(callback: CallbackQuery):
     else:
         duration_key = data.replace('crypto_r_', '')
 
-    rub_amount = dct_price[duration_key]
-    desc_key = duration_key
+    rub_amount, des_text = tariff_rub_and_desc(duration_key)
 
     if 'white' in duration_key:
         white_flag = True
-        duration = duration_key.replace('white_', '')
+        duration_plain = duration_key.replace('white_', '', 1)
     else:
-        duration = duration_key
+        white_flag = False
+        duration_plain = duration_key
 
     if callback.from_user.id in ADMIN_IDS:
         rub_amount = 1
 
+    days_payload = str(tariff_days_for_x3(duration_plain))
+
     if gift_flag:
-        description = f"Подписка в подарок {dct_desc[desc_key]}"
+        description = f"Подписка в подарок {des_text}"
     else:
-        description = dct_desc[desc_key]
+        description = des_text
 
     result = await create_cryptobot_payment(
         rub_amount=rub_amount,
         description=description,
         user_id=user_id,
-        duration=duration,
+        duration=days_payload,
         white=white_flag,
         is_gift=gift_flag
     )
 
     if result['status'] == 'pending':
-        text = lexicon['payment_link_white'] if white_flag else lexicon['payment_link']
+        if white_flag:
+            text = lexicon['payment_link_white']
+        else:
+            ud_pay = await sql.get_user(user_id)
+            text = payment_link_pro_for_hwid(pro_hwid_device_limit_for_user_row(ud_pay))
         if gift_flag:
             text += '\n\nДля оплаты <b>подарочной подписки</b> перейдите по ссылке:'
         else:

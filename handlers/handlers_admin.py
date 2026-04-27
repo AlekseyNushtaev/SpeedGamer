@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from bot import sql, x3, bot
 from config import ADMIN_IDS, CHECKER_ID
+from friends_vpn import pro_hwid_device_limit_for_user_row
 from keyboard import create_kb, STYLE_PRIMARY
 from logging_config import logger
 import asyncio
@@ -123,7 +124,8 @@ async def set_subscription_date(message: Message):
         username = str(user_id) + ('_white' if is_white else '')
 
         # Устанавливаем дату в панели
-        success, actual_date = await x3.set_expiration_date(username, target_date, user_id)
+        hw_lim = pro_hwid_device_limit_for_user_row(user_data)
+        success, actual_date = await x3.set_expiration_date(username, target_date, user_id, hwid_device_limit=hw_lim)
 
         if not success or actual_date is None:
             await message.answer("❌ Не удалось установить дату в панели. Подробности в логах.")
@@ -305,11 +307,11 @@ async def sync_panel(message: Message):
         await bot.send_message(
             CHECKER_ID,
             'Добрый день. Мы создали Вам личный кабинет и начислили 5 дней пробного '
-            'доступа.\nПерейдите по ссылке, нажав на кнопку 🔗 Подключить SpeedGamer',
+            'доступа.\nПерейдите по ссылке, нажав на кнопку 🔗 Подключить ВПН',
             reply_markup=create_kb(
                 1,
                 styles={'connect_vpn': STYLE_PRIMARY},
-                connect_vpn='🔗 Подключить SpeedGamer'))
+                connect_vpn='🔗 Подключить ВПН'))
 
     for user_id in users_for_sync:
         # Проверяем, есть ли пользователь в панели
@@ -330,17 +332,19 @@ async def sync_panel(message: Message):
                 logger.info(f"Обновлена дата для {user_id} до {expire_dt}")
         else:
             user_id_str = str(user_id)
-            result = await x3.addClient(5, user_id_str, user_id)
+            ud_sync = await sql.get_user(user_id)
+            hw_lim = pro_hwid_device_limit_for_user_row(ud_sync)
+            result = await x3.addClient(5, user_id_str, user_id, hwid_device_limit=hw_lim)
             if result:
                 added_to_panel += 1
                 logger.info(f"Добавлен в панель пользователь {user_id} (day=0)")
                 await bot.send_message(user_id,
                                        'Добрый день. Мы создали Вам личный кабинет и начислили 5 дней пробного '
-                                       'доступа.\nПерейдите по ссылке, нажав на кнопку 🔗 Подключить SpeedGamer',
+                                       'доступа.\nПерейдите по ссылке, нажав на кнопку 🔗 Подключить ВПН',
                                        reply_markup=create_kb(
                                            1,
                                            styles={'connect_vpn': STYLE_PRIMARY},
-                                           connect_vpn='🔗 Подключить SpeedGamer'))
+                                           connect_vpn='🔗 Подключить ВПН'))
             else:
                 not_found += 1
                 logger.warning(f"Не удалось добавить в панель пользователя {user_id}")
@@ -601,12 +605,12 @@ async def send_gift_command(message: Message):
 
 Мы столкнулись с мощной DDoS-атакой, если у вас <b>не открывался личный кабинет — проблема уже решена.</b>
 
-🔥 Мы начислили вам <b>дополнительные 5 дней</b> к подписке, чтобы вы могли оценить удобство Ускорителя игр.
+🔥 Мы начислили вам <b>дополнительные 5 дней</b> к подписке, чтобы вы могли оценить ВПН ДЛЯ СВОИХ.
 
 📱 Не можете настроить?
 Если вы никак не могли разобраться с импортом конфигов — <b>смотрите видеоинструкцию</b>! Там всё разложено по полочкам.
 
-🌐 Осталось только нажать кнопку "🔗 Подключить Ускоритель игр" — и вы в деле.
+🌐 Осталось только нажать кнопку «🔗 Подключить ВПН» — и вы в деле.
             '''
 
     for user_id in candidates[83:]:
@@ -621,7 +625,7 @@ async def send_gift_command(message: Message):
                                            'connect_vpn': STYLE_PRIMARY,
                                        },
                                        video_faq='🎥 Видеоинструкция',
-                                       connect_vpn='🔗 Подключить Ускоритель игр'))
+                                       connect_vpn='🔗 Подключить ВПН'))
             # Добавляем 3 дня подписки
             result = await x3.updateClient(5, str(user_id), user_id)
             if result:
@@ -688,7 +692,7 @@ async def send_push_command(message: Message):
 📱 Не можете настроить?
 Если вы никак не могли разобраться с импортом конфигов — <b>смотрите видеоинструкцию</b>! Там всё разложено по полочкам.
 
-🌐 Осталось только нажать кнопку "🔗 Подключить Ускоритель игр" — и вы снова в деле.
+🌐 Осталось только нажать кнопку «🔗 Подключить ВПН» — и вы снова в деле.
     '''
 
     success_count = 0
@@ -705,7 +709,7 @@ async def send_push_command(message: Message):
                                            'connect_vpn': STYLE_PRIMARY,
                                        },
                                        video_faq='🎥 Видеоинструкция',
-                                       connect_vpn='🔗 Подключить Ускоритель игр'))
+                                       connect_vpn='🔗 Подключить ВПН'))
             success_count += 1
             logger.info(f"Push отправлен пользователю {user_id}")
             await asyncio.sleep(0.05)

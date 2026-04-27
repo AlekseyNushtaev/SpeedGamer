@@ -9,8 +9,10 @@ from aiogram.types import CallbackQuery
 
 from bot import sql
 from config import ADMIN_IDS, BOT_URL, WATA_API_BASE, WATA_API_CARD_KEY, WATA_API_SBP_KEY
+from friends_vpn import pro_hwid_device_limit_for_user_row
 from keyboard import keyboard_payment_sbp, create_kb
-from lexicon import dct_price, dct_desc, lexicon
+from lexicon import lexicon, payment_link_pro_for_hwid
+from tariff_resolve import tariff_days_for_x3, tariff_rub_and_desc
 from logging_config import logger
 
 router = Router()
@@ -301,39 +303,45 @@ async def process_payment_wata_sbp(callback: CallbackQuery):
     data = callback.data
     duration, gift_flag = _duration_from_wata_callback(data, "wata_sbp_r_", "wata_sbp_gift_r_")
     desc_key = duration
-    rub_amount = dct_price[duration]
+    rub_amount, des_text = tariff_rub_and_desc(desc_key)
     if callback.from_user.id in ADMIN_IDS:
         rub_amount = 1
     user_id = str(callback.from_user.id)
     white_flag = False
     if "white" in duration:
-        duration = duration.replace("white_", "")
+        duration_plain = duration.replace("white_", "", 1)
         white_flag = True
+    else:
+        duration_plain = duration
+    days_payload = str(tariff_days_for_x3(duration_plain))
 
     if gift_flag:
         payment_info = await pay_for_gift(
             val=str(rub_amount),
-            des=f"Подписка в подарок {dct_desc[desc_key]}",
+            des=f"Подписка в подарок {des_text}",
             user_id=user_id,
-            duration=duration,
+            duration=days_payload,
             white=white_flag,
             kind="sbp",
         )
     else:
         payment_info = await pay(
             val=str(rub_amount),
-            des=dct_desc[desc_key],
+            des=des_text,
             user_id=user_id,
-            duration=duration,
+            duration=days_payload,
             white=white_flag,
             kind="sbp",
         )
 
     if payment_info["status"] == "pending":
         try:
-            text = lexicon["payment_link"]
+            ud_pay = await sql.get_user(int(user_id))
+            lim_pay = pro_hwid_device_limit_for_user_row(ud_pay)
             if white_flag:
                 text = lexicon["payment_link_white"]
+            else:
+                text = payment_link_pro_for_hwid(lim_pay)
             if gift_flag:
                 text += "\n\nДля оплаты <b>подарочной подписки</b> перейдите по ссылке:"
             else:
@@ -354,39 +362,45 @@ async def process_payment_wata_card(callback: CallbackQuery):
     data = callback.data
     duration, gift_flag = _duration_from_wata_callback(data, "wata_card_r_", "wata_card_gift_r_")
     desc_key = duration
-    rub_amount = dct_price[duration]
+    rub_amount, des_text = tariff_rub_and_desc(desc_key)
     if callback.from_user.id in ADMIN_IDS:
         rub_amount = 1
     user_id = str(callback.from_user.id)
     white_flag = False
     if "white" in duration:
-        duration = duration.replace("white_", "")
+        duration_plain = duration.replace("white_", "", 1)
         white_flag = True
+    else:
+        duration_plain = duration
+    days_payload = str(tariff_days_for_x3(duration_plain))
 
     if gift_flag:
         payment_info = await pay_for_gift(
             val=str(rub_amount),
-            des=f"Подписка в подарок {dct_desc[desc_key]}",
+            des=f"Подписка в подарок {des_text}",
             user_id=user_id,
-            duration=duration,
+            duration=days_payload,
             white=white_flag,
             kind="card",
         )
     else:
         payment_info = await pay(
             val=str(rub_amount),
-            des=dct_desc[desc_key],
+            des=des_text,
             user_id=user_id,
-            duration=duration,
+            duration=days_payload,
             white=white_flag,
             kind="card",
         )
 
     if payment_info["status"] == "pending":
         try:
-            text = lexicon["payment_link"]
+            ud_pay = await sql.get_user(int(user_id))
+            lim_pay = pro_hwid_device_limit_for_user_row(ud_pay)
             if white_flag:
                 text = lexicon["payment_link_white"]
+            else:
+                text = payment_link_pro_for_hwid(lim_pay)
             if gift_flag:
                 text += "\n\nДля оплаты <b>подарочной подписки</b> перейдите по ссылке:"
             else:

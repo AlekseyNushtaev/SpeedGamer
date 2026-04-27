@@ -2,8 +2,9 @@ from datetime import datetime
 
 from bot import x3, sql, bot
 
+from friends_vpn import pro_hwid_device_limit_for_user_row, referrer_ref_bonus_days
 from keyboard import create_kb, keyboard_sub_after_buy
-from lexicon import lexicon
+from lexicon import TRIAL_TARIFF_PAYMENT_RUB, lexicon
 from logging_config import logger
 
 async def process_confirmed_payment(payload):
@@ -72,14 +73,31 @@ async def process_confirmed_payment(payload):
             if white_flag:
                 user_id_str += '_white'
 
+            try:
+                amount_for_trial = int(float(amount))
+            except (TypeError, ValueError):
+                amount_for_trial = -1
+            is_paid_trial = (
+                not white_flag
+                and duration == 3
+                and amount_for_trial == TRIAL_TARIFF_PAYMENT_RUB
+            )
+
             existing_user = await x3.get_user_by_username(user_id_str)
+            payer_row = await sql.get_user(user_id)
+            hwid_lim = pro_hwid_device_limit_for_user_row(payer_row)
 
             if existing_user and 'response' in existing_user and existing_user['response']:
                 logger.info(f"⏫ Обновляем {user_id_str} на {duration} дней")
                 response = await x3.updateClient(duration, user_id_str, user_id)
             else:
                 logger.info(f"➕ Добавляем {user_id_str} на {duration} дней")
-                response = await x3.addClient(duration, user_id_str, user_id)
+                response = await x3.addClient(
+                    duration,
+                    user_id_str,
+                    user_id,
+                    hwid_device_limit=None if white_flag else hwid_lim,
+                )
 
             if not response:
                 logger.error(f"❌ Не удалось обновить клиента {user_id_str}")
@@ -100,30 +118,34 @@ async def process_confirmed_payment(payload):
                 except ValueError as e:
                     logger.error(f"❌ Ошибка парсинга даты: {e}")
 
-            # Реферальная система
+            # Реферальная система (не за пробный 3 дня / r_3)
             try:
                 user_data = await sql.get_user(user_id)
                 if user_data and len(user_data) > 4:
-                    is_pay_null = user_data[8]
+                    # reserve_field[8]: после первой «полной» оплаты True — не начислять рефералку повторно
+                    referral_gate_done = user_data[8]
                     ref_id_str = user_data[2]
 
-                    if not is_pay_null and ref_id_str:
+                    if is_paid_trial:
+                        logger.info(f"Рефералка не начисляется: пробная оплата 3 дня user={user_id}")
+                    if not referral_gate_done and ref_id_str and not is_paid_trial:
                         try:
                             ref_id = int(ref_id_str)
                             ref_data = await sql.get_user(ref_id)
 
                             if ref_data and len(ref_data) > 4:
-                                ref_is_pay_null = ref_data[4]
+                                referrer_in_panel = ref_data[4]
 
-                                if ref_is_pay_null:
-                                    logger.info(f"🎁 Начисляем 7 дней рефереру {ref_id} за приглашение")
+                                if referrer_in_panel:
+                                    bonus_days = referrer_ref_bonus_days(ref_data)
+                                    logger.info(f"🎁 Начисляем {bonus_days} дней рефереру {ref_id} за приглашение")
 
                                     # await x3.test_connect()
                                     ref_existing = await x3.get_user_by_username(str(ref_id))
 
                                     if ref_existing and 'response' in ref_existing and ref_existing['response']:
-                                        await x3.updateClient(7, str(ref_id), ref_id)
-                                        logger.info(f"✅ Обновлена подписка реферера {ref_id} на 7 дней")
+                                        await x3.updateClient(bonus_days, str(ref_id), ref_id)
+                                        logger.info(f"✅ Обновлена подписка реферера {ref_id} на {bonus_days} дней")
 
                                     ref_result_active = await x3.activ(str(ref_id))
                                     ref_subscription_time = ref_result_active.get('time', '-')
@@ -140,7 +162,7 @@ async def process_confirmed_payment(payload):
                                     try:
                                         await bot.send_message(
                                             chat_id=ref_id,
-                                            text=lexicon['ref_success'].format(user_id),
+                                            text=lexicon['ref_success'].format(user_id, bonus_days),
                                             reply_markup=create_kb(1, back_to_main='🔙 Назад')
                                         )
                                         logger.info(f"✅ Уведомление отправлено рефереру {ref_id}")
@@ -157,7 +179,9 @@ async def process_confirmed_payment(payload):
                 await sql.update_in_panel(user_id)
             else:
                 await sql.add_user(user_id, True)
-            await sql.update_reserve_field(user_id)
+            # Пробный 10 ₽ не помечаем reserve_field — иначе первая «нормальная» оплата не даст бонус рефереру
+            if not is_paid_trial:
+                await sql.update_reserve_field(user_id)
 
             # Отправляем уведомление пользователю
             try:

@@ -3,20 +3,39 @@ import requests
 
 from bot import sql, x3, bot
 from config import CHANEL_ID, ADMIN_IDS, BOT_URL
+from friends_vpn import (
+    is_friends_only_locked,
+    omit_new_user_db_on_plain_start,
+    pro_hwid_device_limit_for_user_row,
+    referrer_ref_bonus_days,
+    uses_new_friend_tariffs,
+)
 from keyboard import (keyboard_start, keyboard_start_bonus, keyboard_tariff_bonus, keyboard_tariff,
                       keyboard_subscription, ref_keyboard, keyboard_gift_tariff,
                       keyboard_payment_method, keyboard_payment_method_stock,
-                      keyboard_inline_ref, create_kb)
+                      keyboard_inline_ref, create_kb, STYLE_PRIMARY)
 from logging_config import logger
 import asyncio
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, ChatMemberUpdated, InlineQuery, InlineQueryResultArticle, \
-    InputTextMessageContent
+    InputTextMessageContent, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import ChatMemberUpdatedFilter, KICKED, MEMBER, Command
-from lexicon import lexicon
+from lexicon import buy_text_for_pro_hwid, lexicon, payment_link_pro_for_hwid
 
 
 router: Router = Router()
+
+
+async def _send_friends_locked_message(callback: CallbackQuery) -> None:
+    await callback.message.answer(
+        text=lexicon['friends_vpn_locked'],
+        parse_mode='HTML',
+        disable_web_page_preview=True,
+    )
+
+
+def _friends_tariffs(ud) -> bool:
+    return ud is not None and uses_new_friend_tariffs(ud)
 
 
 # Этот хэндлер срабатывает на команду /start
@@ -24,6 +43,7 @@ router: Router = Router()
 async def process_start_command(message: Message, command: Command):
 
     user_data = await sql.get_user(message.from_user.id)
+    had_row_before = user_data is not None
     in_panel = False
     ref_login = ''
     existing = False
@@ -34,10 +54,12 @@ async def process_start_command(message: Message, command: Command):
         in_panel = user_data[4]
         existing = True
 
-    if len(message.text.split(' ')) == 1:
+    omit_new_user_db = omit_new_user_db_on_plain_start(had_row_before, message.text or "")
+
+    if len((message.text or "").strip().split()) == 1:
         if user_data:
             logger.info(f'Юзер {message.from_user.id} - {message.from_user.username} нажал старт повторно')
-        else:
+        elif not omit_new_user_db:
             logger.success(f'Юзер {message.from_user.id} - {message.from_user.username} зашел в бота в первый раз')
 
     else:
@@ -103,12 +125,41 @@ async def process_start_command(message: Message, command: Command):
                 stamp = message.text.split(' ')[1]
 
     if not existing:
-        inserted = await sql.add_user(message.from_user.id, False, False, ref=ref_login, stamp=stamp)
-        if inserted:
-            logger.info(f'Юзер {message.from_user.id} - {message.from_user.username} добавлен в БД')
-        if ttclid:
-            await sql.update_ttclid(message.from_user.id, ttclid)
-            logger.info(f'Юзеру {message.from_user.id} - {message.from_user.username} присвоен ttclid')
+        if omit_new_user_db:
+            logger.info(
+                f'Юзер {message.from_user.id} - {message.from_user.username}: /start без метки — в БД не записываем'
+            )
+        else:
+            inserted = await sql.add_user(message.from_user.id, False, False, ref=ref_login, stamp=stamp)
+            if inserted:
+                logger.info(f'Юзер {message.from_user.id} - {message.from_user.username} добавлен в БД')
+            if ttclid:
+                await sql.update_ttclid(message.from_user.id, ttclid)
+                logger.info(f'Юзеру {message.from_user.id} - {message.from_user.username} присвоен ttclid')
+
+    if had_row_before:
+        if ref_login:
+            await sql.try_set_ref_from_invite(message.from_user.id, ref_login)
+        if stamp:
+            await sql.try_set_stamp_from_invite(message.from_user.id, stamp)
+
+    user_data = await sql.get_user(message.from_user.id)
+    if user_data is None and omit_new_user_db:
+        await message.answer(
+            text=lexicon['friends_vpn_locked'],
+            parse_mode='HTML',
+            disable_web_page_preview=True,
+        )
+        return
+    if user_data and is_friends_only_locked(user_data):
+        await message.answer(
+            text=lexicon['friends_vpn_locked'],
+            parse_mode='HTML',
+            disable_web_page_preview=True,
+        )
+        return
+
+    in_panel = user_data[4] if user_data else in_panel
 
     if not in_panel:
         await message.answer(text=lexicon['start_bonus'],
@@ -124,31 +175,41 @@ async def process_start_command(message: Message, command: Command):
 async def buy_vpn_cb(callback: CallbackQuery):
     await callback.answer()
     user_data = await sql.get_user(callback.from_user.id)
+    if user_data and is_friends_only_locked(user_data):
+        await _send_friends_locked_message(callback)
+        return
     in_panel = False
 
     if user_data is not None and len(user_data) > 4:
         in_panel = user_data[4]
 
     result_active = await x3.activ(str(callback.from_user.id))
+    fr = _friends_tariffs(user_data)
+    buy_txt = buy_text_for_pro_hwid(pro_hwid_device_limit_for_user_row(user_data))
 
     if result_active['activ'] == '🔎 - Не подключён' and not in_panel:
-        await callback.message.answer(text=lexicon['buy'],
-                                      reply_markup=keyboard_tariff_bonus(),
+        await callback.message.answer(text=buy_txt,
+                                      reply_markup=keyboard_tariff_bonus(friends=fr),
                                       disable_web_page_preview=True)
     else:
-        await callback.message.answer(text=lexicon['buy'],
-                                      reply_markup=keyboard_tariff(),
+        await callback.message.answer(text=buy_txt,
+                                      reply_markup=keyboard_tariff(friends=fr),
                                       disable_web_page_preview=True)
 
 
 @router.callback_query(F.data == 'connect_vpn')
 async def direct_connect_vpn_cb(callback: CallbackQuery):
+    await callback.answer()
+    ud = await sql.get_user(callback.from_user.id)
+    if ud and is_friends_only_locked(ud):
+        await _send_friends_locked_message(callback)
+        return
     # await x3.test_connect()
     user_id = str(callback.from_user.id)
     sub_url = await x3.sublink(user_id)
     sub_url_white = None
     user_data = await sql.get_user(callback.from_user.id)
-    if user_data[10]:
+    if user_data and user_data[10]:
         user_id_white = user_id + '_white'
         sub_url_white = await x3.sublink(user_id_white)
 
@@ -161,16 +222,23 @@ async def direct_connect_vpn_cb(callback: CallbackQuery):
         reply_markup=keyboard_subscription(sub_url, sub_url_white),
         disable_web_page_preview=True
     )
-    await callback.answer()
 
 
-@router.callback_query(F.data.in_({'r_3', 'r_7', 'r_30', 'r_90', 'r_180', 'r_white_30'}))
+@router.callback_query(F.data.in_({
+    'r_3', 'r_7', 'r_30', 'r_90', 'r_180', 'r_white_30',
+    'r_new_7', 'r_new_30', 'r_new_90', 'r_new_3000',
+}))
 async def process_payment_method(callback: CallbackQuery):
     await callback.answer()
-    text = lexicon['payment_link']
+    ud = await sql.get_user(callback.from_user.id)
+    if ud and is_friends_only_locked(ud):
+        await _send_friends_locked_message(callback)
+        return
     if 'white' in callback.data:
         await sql.add_white_counter_if_not_exists(callback.from_user.id)
         text = lexicon['payment_link_white']
+    else:
+        text = payment_link_pro_for_hwid(pro_hwid_device_limit_for_user_row(ud))
     text += '\n\nВыберите способ оплаты:'
     tariff = callback.data
     await callback.message.answer(text, reply_markup=keyboard_payment_method(tariff))
@@ -181,6 +249,9 @@ async def free_vpn_legacy_cb(callback: CallbackQuery):
     """Старые кнопки «бесплатно» в рассылках: триал теперь платный (r_3 / «10 ₽ на 3 дня»)."""
     await callback.answer()
     user_data = await sql.get_user(callback.from_user.id)
+    if user_data and is_friends_only_locked(user_data):
+        await _send_friends_locked_message(callback)
+        return
     in_panel = False
     if user_data is not None and len(user_data) > 4:
         in_panel = user_data[4]
@@ -191,12 +262,14 @@ async def free_vpn_legacy_cb(callback: CallbackQuery):
         )
         return
     result_active = await x3.activ(str(callback.from_user.id))
+    fr = _friends_tariffs(user_data)
+    buy_txt = buy_text_for_pro_hwid(pro_hwid_device_limit_for_user_row(user_data))
     if result_active['activ'] == '🔎 - Не подключён' and not in_panel:
-        kb = keyboard_tariff_bonus()
+        kb = keyboard_tariff_bonus(friends=fr)
     else:
-        kb = keyboard_tariff()
+        kb = keyboard_tariff(friends=fr)
     await callback.message.answer(
-        text=lexicon['buy'],
+        text=buy_txt,
         reply_markup=kb,
         disable_web_page_preview=True,
     )
@@ -211,9 +284,14 @@ async def info_legacy(callback: CallbackQuery):
 @router.callback_query(F.data == 'ref')
 async def referral_program(callback: CallbackQuery):
     await callback.answer()
+    ud = await sql.get_user(callback.from_user.id)
+    if ud and is_friends_only_locked(ud):
+        await _send_friends_locked_message(callback)
+        return
     count = await sql.select_ref_count(int(callback.from_user.id))
+    bonus_days = referrer_ref_bonus_days(ud) if ud else 7
     await callback.message.answer(
-        text=lexicon['ref_info'].format(count, callback.from_user.id),
+        text=lexicon['ref_info'].format(count, callback.from_user.id, bonus_days),
         reply_markup=ref_keyboard(callback.from_user.id),
         disable_web_page_preview=True
     )
@@ -221,21 +299,30 @@ async def referral_program(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'buy_gift')
 async def gift_subscription_start(callback: CallbackQuery):
+    """Начало процесса подарка подписки."""
     await callback.answer()
-    """Начало процесса подарка подписки"""
+    ud = await sql.get_user(callback.from_user.id)
+    if ud and is_friends_only_locked(ud):
+        await _send_friends_locked_message(callback)
+        return
     await callback.message.answer(
         lexicon['gift_start'],
-        reply_markup=keyboard_gift_tariff()
+        reply_markup=keyboard_gift_tariff(friends=_friends_tariffs(ud)),
     )
 
 
 @router.callback_query(F.data.startswith('gift_'))
 async def process_gift_payment_method(callback: CallbackQuery):
     await callback.answer()
-    text = lexicon['payment_link']
+    ud = await sql.get_user(callback.from_user.id)
+    if ud and is_friends_only_locked(ud):
+        await _send_friends_locked_message(callback)
+        return
     if 'white' in callback.data:
         await sql.add_white_counter_if_not_exists(callback.from_user.id)
         text = lexicon['payment_link_white']
+    else:
+        text = payment_link_pro_for_hwid(pro_hwid_device_limit_for_user_row(ud))
     tariff = callback.data
     text += '\n\nВыберите способ оплаты <b>подарочной подписки</b>:'
     await callback.message.answer(text, reply_markup=keyboard_payment_method(tariff))
@@ -256,6 +343,7 @@ async def activate_gift(message: Message, gift_id: str):
 
     duration = result[1]
     white_flag = result[2]
+    gift_giver_id = result[3]
 
     # Активируем подписку для получателя
     # await x3.test_connect()
@@ -266,8 +354,14 @@ async def activate_gift(message: Message, gift_id: str):
 
     was_in_db = await sql.get_user(message.from_user.id) is not None
     if not was_in_db:
-        await sql.add_user(message.from_user.id, False)
+        ref_as_gift = ''
+        if gift_giver_id and int(gift_giver_id) != int(user_id):
+            ref_as_gift = str(int(gift_giver_id))
+        await sql.add_user(message.from_user.id, False, False, ref=ref_as_gift)
 
+
+    recipient_row = await sql.get_user(message.from_user.id)
+    hw_lim = pro_hwid_device_limit_for_user_row(recipient_row)
 
     # Проверяем существует ли пользователь
     existing_user = await x3.get_user_by_username(user_id_str)
@@ -275,7 +369,12 @@ async def activate_gift(message: Message, gift_id: str):
     if existing_user and 'response' in existing_user and existing_user['response']:
         response = await x3.updateClient(duration, user_id_str, user_id)
     else:
-        response = await x3.addClient(duration, user_id_str, user_id)
+        response = await x3.addClient(
+            duration,
+            user_id_str,
+            user_id,
+            hwid_device_limit=None if white_flag else hw_lim,
+        )
 
     if response:
         # Получаем информацию о подписке
@@ -304,6 +403,7 @@ async def activate_gift(message: Message, gift_id: str):
 
 @router.callback_query(F.data == 'video_faq')
 async def video_faq(callback: CallbackQuery):
+    await callback.answer()
     await callback.message.answer_video(video='BAACAgIAAxkBAAECpqNpqrDnzrb_G1rcEtZli39lGgVpMAACa5sAAl9MWUmxYN_rJYzPVToE',
                                         caption=lexicon['push_not_subscribed_3h'],
                                         reply_markup=create_kb(1, back_to_main='🔙 Назад'))
@@ -312,12 +412,22 @@ async def video_faq(callback: CallbackQuery):
 @router.callback_query(F.data == 'back_to_buy_menu')
 async def handle_back_to_menu(callback: CallbackQuery):
     """Обработчик для возврата в главное меню из оплаты"""
-    await callback.message.answer(text=lexicon['buy'], reply_markup=keyboard_tariff())
+    await callback.answer()
+    ud = await sql.get_user(callback.from_user.id)
+    await callback.message.answer(
+        text=buy_text_for_pro_hwid(pro_hwid_device_limit_for_user_row(ud)),
+        reply_markup=keyboard_tariff(friends=_friends_tariffs(ud)),
+    )
 
 
 @router.callback_query(F.data == 'back_to_main')
 async def handle_back_to_menu(callback: CallbackQuery):
     """Обработчик для возврата в главное меню из оплаты"""
+    await callback.answer()
+    ud = await sql.get_user(callback.from_user.id)
+    if ud and is_friends_only_locked(ud):
+        await _send_friends_locked_message(callback)
+        return
     await callback.message.answer(text=lexicon['start'],
                                   reply_markup=keyboard_start(),
                                   disable_web_page_preview=True)
@@ -326,7 +436,12 @@ async def handle_back_to_menu(callback: CallbackQuery):
 @router.callback_query(F.data == 'back_to_gift_menu')
 async def handle_back_to_menu(callback: CallbackQuery):
     """Обработчик для возврата в главное меню из оплаты"""
-    await callback.message.edit_text(text=lexicon['gift_start'], reply_markup=keyboard_gift_tariff())
+    await callback.answer()
+    ud = await sql.get_user(callback.from_user.id)
+    await callback.message.edit_text(
+        text=lexicon['gift_start'],
+        reply_markup=keyboard_gift_tariff(friends=_friends_tariffs(ud)),
+    )
 
 
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=KICKED))
@@ -343,10 +458,17 @@ async def user_unblocked_bot(event: ChatMemberUpdated):
 
 @router.callback_query(F.data == 'r_120')
 async def process_payment_method_bonus(callback: CallbackQuery):
+    await callback.answer()
     user_data = await sql.get_user(callback.from_user.id)
+    if user_data and is_friends_only_locked(user_data):
+        await _send_friends_locked_message(callback)
+        return
+    if not user_data:
+        return
     if user_data[8]:
         await callback.message.answer('Акция действительна только при первой оплате.',
                                       reply_markup=create_kb(1, back_to_main='🔙 Назад'))
+        return
     tariff = callback.data
     await callback.message.answer('Выберите метод оплаты акционной подписки:',
                                   reply_markup=keyboard_payment_method_stock(tariff))
@@ -374,15 +496,22 @@ async def handle_chat_member_update(update: ChatMemberUpdated):
 @router.inline_query(lambda query: query.query == 'partner')
 async def inline_partner(inline_query: InlineQuery):
     user_id = inline_query.from_user.id
+    row = await sql.get_user(user_id)
+    if row and is_friends_only_locked(row):
+        await bot.answer_inline_query(inline_query.id, results=[], cache_time=0)
+        return
 
+    bonus_days = referrer_ref_bonus_days(row) if row else 7
     text = f'''
-Привет. Подключись к Ускорителю игр по моей ссылке:
+Привет! Подключись к ВПН ДЛЯ СВОИХ по моей ссылке — быстрый и надёжный ВПН для своих:
 
 {BOT_URL}?start=ref{user_id}
 
-💥 Низкий пинг в Roblox, Brawl Stars, Clash Royale
-💫 YouTube без рекламы и лимитов
-👌🏻 Стабильное соединение даже в часы пик
+За твой первый полноценный платёж (не пробный «3 дня за 10 ₽») мне начислится +{bonus_days} д. к PRO.
+
+💥 Стабильный туннель для работы и личных задач
+💫 Удобно для видео и сервисов
+👌🏻 Делимся доступом только с близким кругом
     '''
 
     result = InlineQueryResultArticle(

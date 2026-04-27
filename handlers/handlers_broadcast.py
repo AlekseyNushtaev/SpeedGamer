@@ -67,7 +67,7 @@ CUSTOM_PRESETS = [
     ("r_3", "🔥 10 ₽ на 3 дня", STYLE_SUCCESS),
     ("free_vpn", "🔥 Попробовать бесплатно (legacy)", STYLE_SUCCESS),
     ("buy_vpn", "🛒 Купить подписку", STYLE_SUCCESS),
-    ("connect_vpn", "🔗 Подключить Ускоритель игр", STYLE_PRIMARY),
+    ("connect_vpn", "🔗 Подключить ВПН", STYLE_PRIMARY),
     ("ref", "👥 Рефералка", STYLE_PRIMARY),
     ("buy_gift", "🎁 Подарить подписку", STYLE_SUCCESS),
     ("ref_invite", "Пригласить друзей🫶", STYLE_SUCCESS),
@@ -84,7 +84,7 @@ def _ref_invite_url(user_id: int) -> str:
     base = BOT_URL or ""
     return (
         f"https://t.me/share/url?url={base}?start=ref{user_id}"
-        f"&text={urllib.parse.quote('Вот ссылка для тебя на надежный VPN!')}"
+        f"&text={urllib.parse.quote('Вот ссылка на быстрый ВПН для своих!')}"
     )
 
 
@@ -637,15 +637,15 @@ async def admin_broadcast(message: Message):
 Если у вас бывают обрывы связи — не терпите. Просто смените приложение на <b>Happ</b> или сразу напишите нам в <a href="https://t.me/suppzoomvpn">Поддержку</a>. Мы всё починим 🤝
 
 📱 <b>Пользуетесь и всё нравится?</b>
-Не жадничайте, скиньте этот пост контактам, у которых вечно нет нормального VPN. Сделайте им подарок 😉
+Поделитесь с теми, кому нужен надёжный и быстрый ВПН для своих — пусть тоже подключатся 😉
         """
     button_text = "Пригласить друзей🫶"
     if CHECKER_ID is not None:
-        url = f"https://t.me/share/url?url=https://t.me/zoomerskyvpn_bot?start=ref{CHECKER_ID}&text={urllib.parse.quote('Держи надежный VPN, там еще и большой пробный период!')}"
+        url = f"https://t.me/share/url?url=https://t.me/zoomerskyvpn_bot?start=ref{CHECKER_ID}&text={urllib.parse.quote('Держи ссылку на ВПН для своих — быстро и только для своих!')}"
         send_message(chat_id=CHECKER_ID, text=text, button_text=button_text, url=url)
     for user_id in users:
         try:
-            url = f"https://t.me/share/url?url=https://t.me/zoomerskyvpn_bot?start=ref{user_id}&text={urllib.parse.quote('Держи надежный VPN, там еще и большой пробный период!')}"
+            url = f"https://t.me/share/url?url=https://t.me/zoomerskyvpn_bot?start=ref{user_id}&text={urllib.parse.quote('Держи ссылку на ВПН для своих — быстро и только для своих!')}"
             response = send_message(chat_id=user_id, text=text, button_text=button_text, url=url)
 
             if not response.get("ok") and response.get("error_code") == 403:

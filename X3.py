@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import hmac
 import uuid
+from typing import Optional
 
 import urllib3
 import aiohttp
@@ -106,8 +107,14 @@ class X3:
         chars = string.ascii_letters + string.digits
         return ''.join(random.choice(chars) for _ in range(length))
 
-    async def addClient(self, day, user_id_str, user_id):
-        """Добавляет нового клиента"""
+    async def addClient(
+        self,
+        day,
+        user_id_str,
+        user_id,
+        hwid_device_limit: Optional[int] = None,
+    ):
+        """Добавляет нового клиента. hwid_device_limit — лимит устройств PRO (по умолчанию 3)."""
         try:
             client_id = self.generate_client_id(user_id)
             if 'white' in user_id_str:
@@ -128,8 +135,8 @@ class X3:
                 squad = random.choice([squad_1, squad_2])
                 trafficLimitStrategy = "NO_RESET"
                 trafficLimitBytes = 0
-                hwidDeviceLimit = 3
-            desc = 'SpeedGamer'
+                hwidDeviceLimit = 3 if hwid_device_limit is None else int(hwid_device_limit)
+            desc = 'ВПН для своих'
             data = {
                 "username": user_id_str,
                 "status": "ACTIVE",
@@ -489,7 +496,13 @@ class X3:
             logger.error(f"Ошибка при получении всех пользователей: {e}")
         return lst_users
 
-    async def set_expiration_date(self, username: str, target_date: datetime, user_id: int):
+    async def set_expiration_date(
+        self,
+        username: str,
+        target_date: datetime,
+        user_id: int,
+        hwid_device_limit: Optional[int] = None,
+    ):
         """
         Устанавливает точную дату окончания подписки для пользователя в панели.
         - Если пользователь не существует, создаёт его через addClient (с day=0).
@@ -503,7 +516,7 @@ class X3:
         user_data = await self.get_user_by_username(username)
         if not user_data or 'response' not in user_data:
             # Пользователь отсутствует – создаём
-            if not await self.addClient(0, username, user_id):
+            if not await self.addClient(0, username, user_id, hwid_device_limit=hwid_device_limit):
                 logger.error(f"Не удалось создать пользователя {username} для установки даты")
                 return False, None
             # После создания получаем данные заново
