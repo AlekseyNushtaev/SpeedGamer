@@ -198,8 +198,6 @@ async def process_payment_sbp(callback: CallbackQuery):
     if 'white' in duration:
         duration = duration.replace('white_', '')
         white_flag = True
-    if 'old' in duration:
-        duration = duration.replace('old', '')
 
     if gift_flag:
         payment_info = await pay_for_gift(
@@ -259,8 +257,6 @@ async def process_payment_card(callback: CallbackQuery):
     if 'white' in duration:
         duration = duration.replace('white_', '')
         white_flag = True
-    if 'old' in duration:
-        duration = duration.replace('old', '')
 
     if gift_flag:
         payment_info = await pay_for_gift(

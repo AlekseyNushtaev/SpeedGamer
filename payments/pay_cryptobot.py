@@ -143,8 +143,6 @@ async def process_payment_crypto(callback: CallbackQuery):
     if 'white' in duration_key:
         white_flag = True
         duration = duration_key.replace('white_', '')
-    elif 'old' in duration_key:
-        duration = duration_key.replace('old', '')
     else:
         duration = duration_key
 

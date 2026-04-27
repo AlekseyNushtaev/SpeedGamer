@@ -65,8 +65,8 @@ def chanel_keyboard():
 def keyboard_start_bonus():
     return create_kb(
         1,
-        styles={"free_vpn": STYLE_SUCCESS, "buy_vpn": STYLE_SUCCESS},
-        free_vpn="🔥 Попробовать бесплатно",
+        styles={"r_3": STYLE_SUCCESS, "buy_vpn": STYLE_SUCCESS},
+        r_3="🔥 10 ₽ на 3 дня",
         buy_vpn="🛒 Купить подписку",
     )
 
@@ -88,14 +88,13 @@ def keyboard_start():
 
 
 _STYLES_TARIFF = {
+    "r_3": STYLE_SUCCESS,
     "r_7": STYLE_PRIMARY,
     "r_30": STYLE_PRIMARY,
     "r_90": STYLE_SUCCESS,
     "r_180": STYLE_SUCCESS,
     "r_120": STYLE_SUCCESS,
     "r_white_30": STYLE_PRIMARY,
-    "r_30old": STYLE_PRIMARY,
-    "free_vpn": STYLE_SUCCESS,
 }
 
 
@@ -103,12 +102,12 @@ def keyboard_tariff_bonus():
     return create_kb(
         1,
         styles=_STYLES_TARIFF,
+        r_3="🔥 10 ₽ на 3 дня",
         r_7="🤌 7 дней - 99 руб",
         r_30="🤝 30 дней - 199 руб",
         r_90="👌 90 дней - 369 руб",
         r_180="💪 180 дней - 699 руб",
-        r_white_30="🦾 Включи мобильный - 399 руб",
-        free_vpn="🔥ПОПРОБОВАТЬ 3 дня БЕСПЛАТНО🔥",
+        # r_white_30="🦾 Включи мобильный - 399 руб",
         back_to_main="🔙 Назад",
     )
 
@@ -116,12 +115,12 @@ def keyboard_tariff_bonus():
 def keyboard_tariff():
     return create_kb(
         1,
-        styles={k: v for k, v in _STYLES_TARIFF.items() if k != "free_vpn"},
+        styles={k: v for k, v in _STYLES_TARIFF.items() if k != "r_3"},
         r_7="🤌 7 дней - 99 руб",
         r_30="🤝 30 дней - 199 руб",
         r_90="👌 90 дней - 369 руб",
         r_180="💪 180 дней - 699 руб",
-        r_white_30="🦾 Включи мобильный - 399 руб",
+        # r_white_30="🦾 Включи мобильный - 399 руб",
         back_to_main="🔙 Назад",
     )
 
@@ -129,22 +128,13 @@ def keyboard_tariff():
 def keyboard_tariff_trial():
     return create_kb(
         1,
-        styles={k: v for k, v in _STYLES_TARIFF.items() if k != "free_vpn"},
+        styles=_STYLES_TARIFF,
         r_7="🤌 7 дней - 99 руб",
         r_30="🤝 30 дней - 199 руб",
         r_90="👌 90 дней - 369 руб",
         r_120="🔥 Акция: 120 дней - 369 руб",
         r_180="💪 180 дней - 699 руб",
-        r_white_30="🦾 Включи мобильный - 399 руб",
-        back_to_main="🔙 Назад",
-    )
-
-
-def keyboard_tariff_old():
-    return create_kb(
-        1,
-        styles={"r_30old": STYLE_PRIMARY},
-        r_30old="🤝 30 дней - 99 руб",
+        # r_white_30="🦾 Включи мобильный - 399 руб",
         back_to_main="🔙 Назад",
     )
 
@@ -166,7 +156,7 @@ def keyboard_gift_tariff():
         gift_r_30="🤝 30 дней - 199 руб",
         gift_r_90="👌 90 дней - 369 руб",
         gift_r_180="💪 180 дней - 699 руб",
-        gift_r_white_30="🦾 Включи мобильный - 399 руб",
+        # gift_r_white_30="🦾 Включи мобильный - 399 руб",
         back_to_main="🔙 Назад",
     )
 
