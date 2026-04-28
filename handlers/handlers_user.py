@@ -275,6 +275,66 @@ async def free_vpn_legacy_cb(callback: CallbackQuery):
     )
 
 
+@router.callback_query(F.data.startswith("trial_gift_"))
+async def trial_gift_broadcast_callback(callback: CallbackQuery):
+    tail = (callback.data or "")[len("trial_gift_") :]
+    if not tail.isdigit():
+        await callback.answer("Некорректные данные кнопки.", show_alert=True)
+        return
+    days = int(tail)
+    uid = callback.from_user.id
+
+    ud = await sql.get_user(uid)
+    if ud and is_friends_only_locked(ud):
+        await callback.answer()
+        await _send_friends_locked_message(callback)
+        return
+
+    if ud is not None and len(ud) > 26 and ud[26]:
+        await callback.answer("Вы уже взяли свой триал!", show_alert=True)
+        return
+
+    if ud is None:
+        await sql.add_user(uid, False)
+        ud = await sql.get_user(uid)
+
+    user_id_str = str(uid)
+    hwid_lim = pro_hwid_device_limit_for_user_row(ud)
+    existing_user = await x3.get_user_by_username(user_id_str)
+    if existing_user and "response" in existing_user and existing_user["response"]:
+        ok = await x3.updateClient(days, user_id_str, uid)
+    else:
+        ok = await x3.addClient(
+            days,
+            user_id_str,
+            uid,
+            hwid_device_limit=hwid_lim,
+        )
+
+    if not ok:
+        await callback.answer()
+        await callback.message.answer(
+            "Не удалось начислить дни. Попробуйте позже или напишите в поддержку."
+        )
+        return
+
+    if await sql.get_user(uid) is not None:
+        await sql.update_in_panel(uid)
+    else:
+        await sql.add_user(uid, True)
+
+    await sql.update_field_bool_3(uid, True)
+    await callback.answer()
+    await callback.message.answer(
+        f"🎉 Поздравляем! Вы получили {days} дней триального доступа к ВПН! ✨🔐",
+        reply_markup=create_kb(
+            1,
+            styles={"connect_vpn": STYLE_PRIMARY},
+            connect_vpn="🔗 Подключить VPN",
+        ),
+    )
+
+
 @router.callback_query(F.data == "info")
 async def info_legacy(callback: CallbackQuery):
     """Старая кнопка «Информация» снята с меню; отвечаем на callback со старых сообщений."""

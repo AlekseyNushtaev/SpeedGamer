@@ -136,6 +136,12 @@ def _custom_presets_markup() -> InlineKeyboardMarkup:
     b.row(InlineKeyboardButton(text="Кнопка-ссылка", callback_data=f"{BCACT}link"))
     b.row(
         InlineKeyboardButton(
+            text="Подарочная кнопка",
+            callback_data=f"{BCACT}tgift",
+        ),
+    )
+    b.row(
+        InlineKeyboardButton(
             text="Завершить формирование клавиатуры",
             callback_data=f"{BCACT}done",
         ),
@@ -189,7 +195,11 @@ def _format_kb_spec_lines(spec: list) -> str:
     lines = []
     for i, entry in enumerate(spec, start=1):
         if entry["kind"] == "cb":
-            lines.append(f"{i}. {entry['text']} (callback: {entry['cb']})")
+            cb = entry["cb"]
+            if isinstance(cb, str) and cb.startswith("trial_gift_"):
+                lines.append(f"{i}. {entry['text']} (подарок trial: {cb})")
+            else:
+                lines.append(f"{i}. {entry['text']} (callback: {cb})")
         else:
             st = entry.get("style")
             if st == STYLE_PRIMARY:
@@ -270,6 +280,8 @@ class BroadcastState(StatesGroup):
     waiting_for_audience = State()
     waiting_for_keyboard = State()
     custom_kb = State()
+    custom_gift_trial_text = State()
+    custom_gift_trial_days = State()
     custom_link_text = State()
     custom_link_url = State()
     custom_link_style = State()
@@ -362,7 +374,8 @@ async def broadcast_pick_keyboard(callback: CallbackQuery, state: FSMContext, bo
         await state.update_data(keyboard_mode="custom", custom_kb_spec=[])
         await callback.message.answer(
             "Добавьте кнопку — ниже список вариантов.\n"
-            "Можно добавить «Кнопка-ссылка» (текст и URL) или завершить формирование.",
+            "Можно добавить «Кнопка-ссылка» (текст и URL), «Подарочная кнопка» (триал в панели) "
+            "или завершить формирование.",
             reply_markup=_custom_presets_markup(),
         )
         await state.set_state(BroadcastState.custom_kb)
@@ -394,6 +407,58 @@ async def broadcast_custom_link_start(callback: CallbackQuery, state: FSMContext
     await callback.answer()
     await callback.message.answer("Введите текст кнопки-ссылки одним сообщением:")
     await state.set_state(BroadcastState.custom_link_text)
+
+
+@router.callback_query(F.data == f"{BCACT}tgift", StateFilter(BroadcastState.custom_kb))
+async def broadcast_custom_trial_gift_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await callback.message.answer(
+        "Введите текст кнопки «подарка» одним сообщением (как она отобразится в рассылке):",
+    )
+    await state.set_state(BroadcastState.custom_gift_trial_text)
+
+
+@router.message(BroadcastState.custom_gift_trial_text)
+async def broadcast_custom_trial_gift_text(message: Message, state: FSMContext):
+    if not message.text or not message.text.strip():
+        await message.answer("Нужен непустой текст кнопки.")
+        return
+    await state.update_data(trial_gift_btn_text=message.text.strip()[:64])
+    await message.answer("Введите количество дней триала (целое число, например: 7):")
+    await state.set_state(BroadcastState.custom_gift_trial_days)
+
+
+@router.message(BroadcastState.custom_gift_trial_days)
+async def broadcast_custom_trial_gift_days(message: Message, state: FSMContext):
+    raw = (message.text or "").strip()
+    if not raw.isdigit() or int(raw) < 1 or int(raw) > 999:
+        await message.answer("Нужно целое число дней от 1 до 999.")
+        return
+    days = int(raw)
+    data = await state.get_data()
+    text = (data.get("trial_gift_btn_text") or "").strip()
+    if not text:
+        await message.answer("Сессия устарела. Начните «Подарочная кнопка» снова.")
+        await state.set_state(BroadcastState.custom_kb)
+        return
+    spec = list(data.get("custom_kb_spec") or [])
+    spec.append(
+        {
+            "kind": "cb",
+            "cb": f"trial_gift_{days}",
+            "text": text,
+            "style": STYLE_SUCCESS,
+        }
+    )
+    await state.update_data(
+        custom_kb_spec=spec,
+        trial_gift_btn_text=None,
+    )
+    await message.answer(
+        f"Кнопка добавлена. Ваша клавиатура:\n{_format_kb_spec_lines(spec)}",
+        reply_markup=_custom_presets_markup(),
+    )
+    await state.set_state(BroadcastState.custom_kb)
 
 
 @router.message(BroadcastState.custom_link_text)
