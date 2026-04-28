@@ -4,7 +4,7 @@ from bot import x3, sql, bot
 
 from friends_vpn import pro_hwid_device_limit_for_user_row, referrer_ref_bonus_days
 from keyboard import create_kb, keyboard_sub_after_buy
-from lexicon import TRIAL_TARIFF_PAYMENT_RUB, lexicon
+from lexicon import lexicon
 from logging_config import logger
 
 async def process_confirmed_payment(payload):
@@ -73,15 +73,9 @@ async def process_confirmed_payment(payload):
             if white_flag:
                 user_id_str += '_white'
 
-            try:
-                amount_for_trial = int(float(amount))
-            except (TypeError, ValueError):
-                amount_for_trial = -1
-            is_paid_trial = (
-                not white_flag
-                and duration == 3
-                and amount_for_trial == TRIAL_TARIFF_PAYMENT_RUB
-            )
+            # Пробный «3 дня» — в payload всегда duration=3 (ключ тарифа «3»); сумма в поле amount
+            # у Stars — это XTR, у крипты — иначе, поэтому триал не привязываем к рублям в payload.
+            is_paid_trial = not white_flag and duration == 3
 
             existing_user = await x3.get_user_by_username(user_id_str)
             payer_row = await sql.get_user(user_id)
