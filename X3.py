@@ -114,7 +114,7 @@ class X3:
         user_id,
         hwid_device_limit: Optional[int] = None,
     ):
-        """Добавляет нового клиента. hwid_device_limit — лимит устройств PRO (по умолчанию 3)."""
+        """Добавляет нового клиента. hwid_device_limit — лимит устройств PRO (по умолчанию 5)."""
         try:
             client_id = self.generate_client_id(user_id)
             if 'white' in user_id_str:
@@ -135,7 +135,7 @@ class X3:
                 squad = random.choice([squad_1, squad_2])
                 trafficLimitStrategy = "NO_RESET"
                 trafficLimitBytes = 0
-                hwidDeviceLimit = 3 if hwid_device_limit is None else int(hwid_device_limit)
+                hwidDeviceLimit = 5 if hwid_device_limit is None else int(hwid_device_limit)
             desc = 'ВПН для своих'
             data = {
                 "username": user_id_str,

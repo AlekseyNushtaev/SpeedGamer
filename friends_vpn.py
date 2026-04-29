@@ -84,20 +84,9 @@ def referrer_ref_bonus_days(referrer_row: Tuple) -> int:
     return 30
 
 
-# Лимит устройств в панели (hwid) для PRO: до порога — 3, после — 5 (если порог не задан — всегда 3).
-PRO_HWID_DEVICE_LIMIT_OLD = 3
-PRO_HWID_DEVICE_LIMIT_NEW = 5
-
-
-def pro_hwid_device_limit_for_create_user(create_user: Optional[datetime]) -> int:
-    if FRIENDS_VPN_CUTOFF_UTC is None or create_user is None:
-        return PRO_HWID_DEVICE_LIMIT_OLD
-    if user_created_before_cutoff(create_user):
-        return PRO_HWID_DEVICE_LIMIT_OLD
-    return PRO_HWID_DEVICE_LIMIT_NEW
+# Лимит устройств в панели (hwid) для PRO — одинаковый для всех пользователей.
+PRO_HWID_DEVICE_LIMIT = 5
 
 
 def pro_hwid_device_limit_for_user_row(user_row: Optional[Tuple]) -> int:
-    if not user_row:
-        return PRO_HWID_DEVICE_LIMIT_OLD
-    return pro_hwid_device_limit_for_create_user(user_row[6])
+    return PRO_HWID_DEVICE_LIMIT

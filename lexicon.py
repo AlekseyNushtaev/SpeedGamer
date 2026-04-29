@@ -18,7 +18,7 @@ _PAYMENT_PRO_5_LINE = '5 устройств, безлимитный трафик
 
 
 def buy_text_for_pro_hwid(device_limit: int) -> str:
-    """Текст «Купить подписку»: 3 или 5 устройств по лимиту панели."""
+    """Текст «Купить подписку»: лимит устройств по настройке панели (сейчас 5)."""
     dev = _BUY_DEVICES_5 if device_limit >= 5 else _BUY_DEVICES_3
     return _BUY_INTRO + dev + _BUY_OUTRO
 
@@ -57,12 +57,12 @@ lexicon = {
              f' - <a href="{DOCUMENT_URL_1}">Пользовательское соглашение.</a>\n'
              f' - <a href="{DOCUMENT_URL_2}">Политика конфиденциальности.</a>',
 
-    'buy': _BUY_INTRO + _BUY_DEVICES_3 + _BUY_OUTRO,
+    'buy': _BUY_INTRO + _BUY_DEVICES_5 + _BUY_OUTRO,
 
     'no_sub': '❌ Подписка не найдена. Сначала оформите доступ к ВПН ДЛЯ СВОИХ.',
     'to_sub': 'Выберите подписку и войдите в личный кабинет, далее следуйте инструкциям.',
 
-    'payment_link': _PAYMENT_PRO_HEAD + _PAYMENT_PRO_3_LINE,
+    'payment_link': _PAYMENT_PRO_HEAD + _PAYMENT_PRO_5_LINE,
 
     'payment_link_white': 'Тариф — 🦾 Включи мобильную связь\n'
                           'Удобен для мобильного интернета: мессенджеры, соцсети, потоковое видео (YouTube и др.).\n'
